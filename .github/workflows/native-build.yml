@@ -38,7 +38,7 @@ jobs:
           PRODUCT=build.noindex/DerivedData/Build/Products/Debug/Scraps.app
           codesign --force --sign - --entitlements App/Scraps/Scraps.entitlements "$PRODUCT"
           codesign --verify --deep --strict "$PRODUCT"
-          codesign -d --entitlements :- "$PRODUCT"
+          codesign -d --entitlements - "$PRODUCT"
           python3 Scripts/verify-product.py "$PRODUCT"
           ditto -c -k --sequesterRsrc --keepParent "$PRODUCT" build.noindex/Scraps-macOS.zip
       - name: iOS and iPadOS build

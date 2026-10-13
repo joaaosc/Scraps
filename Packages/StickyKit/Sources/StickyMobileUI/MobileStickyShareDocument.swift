@@ -15,7 +15,7 @@ struct MobileStickyShareDocument: Transferable, Sendable {
         DataRepresentation(exportedContentType: .rtf) { document in
             try await document.rtfData()
         }
-        ProxyRepresentation(\.plainText)
+        ProxyRepresentation(exporting: \.plainText)
     }
 
     @MainActor
