@@ -136,6 +136,11 @@ actor StickySyncService: CKSyncEngineDelegate {
         guard enabled, let engine else { return }
         let notes = try await store.synchronizationSnapshot()
         let present = try await store.existingIdentifiers().union(notes.map(\.id))
+        let staleSaves = engine.state.pendingRecordZoneChanges.filter { change in
+            guard case let .saveRecord(id) = change, let uuid = UUID(uuidString: id.recordName) else { return false }
+            return !present.contains(uuid)
+        }
+        if !staleSaves.isEmpty { engine.state.remove(pendingRecordZoneChanges: staleSaves) }
         var pending: [CKSyncEngine.PendingRecordZoneChange] = []
         for note in notes {
             if let synced = persisted.records[note.id.uuidString]?.note,
@@ -319,10 +324,12 @@ actor StickySyncService: CKSyncEngineDelegate {
             try await store.deleteSynchronized(id: uuid, replacing: local)
         }
         persisted.records[id.recordName] = nil
+        persisted.deferredRecords[id.recordName] = nil
         persisted.deferredDeletions.remove(id.recordName)
     }
 
     private func remember(_ record: CKRecord) throws {
+        persisted.deferredDeletions.remove(record.recordID.recordName)
         persisted.records[record.recordID.recordName] = try recordInfo(record)
         persisted.deferredRecords[record.recordID.recordName] = nil
     }
@@ -340,6 +347,7 @@ actor StickySyncService: CKSyncEngineDelegate {
             coder.requiresSecureCoding = true
             guard let record = CKRecord(coder: coder) else { throw CocoaError(.coderReadCorrupt) }
             coder.finishDecoding()
+            record["schema"] = 1 as NSNumber
             record.encryptedValues["payload"] = try payload(saved.note) as NSData
             try await importRecord(record)
             persisted.deferredRecords[name] = nil
@@ -351,6 +359,7 @@ actor StickySyncService: CKSyncEngineDelegate {
     }
 
     private func note(from record: CKRecord) throws -> Sticky {
+        guard (record["schema"] as? NSNumber)?.intValue == 1 else { throw CocoaError(.coderReadCorrupt) }
         let data: Data
         if let inline = record.encryptedValues["payload"] as? Data { data = inline }
         else if let file = (record["document"] as? CKAsset)?.fileURL { data = try Data(contentsOf: file) }

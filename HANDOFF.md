@@ -76,3 +76,7 @@ Os testes nativos do pacote passaram. Corrigida a importação explícita exigid
 ### Ajustes e movimento no Mac
 
 Os ajustes distinguem armazenamento local de sincronização ativa. As janelas flutuantes informam a ativação real do aplicativo ao efeito Metal, pois não pertencem a uma cena WindowGroup. Mudanças de acessibilidade interrompem imediatamente a animação e uma troca rápida de cor não deixa o efeito ativo indefinidamente.
+
+### Auditoria do estado CloudKit
+
+Gravações pendentes de notas que já desapareceram são retiradas da fila. Importações de exclusão e recuperação removem operações adiadas antigas do mesmo identificador. Documentos de esquema desconhecido são recusados sem reescrever o conteúdo remoto.
