@@ -16,7 +16,7 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "0CD732F65A23F9E4189FE6E2"
-               BuildableName = "ScrapsMobile.app"
+               BuildableName = "Scraps.app"
                BlueprintName = "ScrapsMobile"
                ReferencedContainer = "container:Scraps.xcodeproj">
             </BuildableReference>
@@ -33,7 +33,7 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "0CD732F65A23F9E4189FE6E2"
-            BuildableName = "ScrapsMobile.app"
+            BuildableName = "Scraps.app"
             BlueprintName = "ScrapsMobile"
             ReferencedContainer = "container:Scraps.xcodeproj">
          </BuildableReference>
@@ -113,7 +113,7 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "0CD732F65A23F9E4189FE6E2"
-            BuildableName = "ScrapsMobile.app"
+            BuildableName = "Scraps.app"
             BlueprintName = "ScrapsMobile"
             ReferencedContainer = "container:Scraps.xcodeproj">
          </BuildableReference>
@@ -132,7 +132,7 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "0CD732F65A23F9E4189FE6E2"
-            BuildableName = "ScrapsMobile.app"
+            BuildableName = "Scraps.app"
             BlueprintName = "ScrapsMobile"
             ReferencedContainer = "container:Scraps.xcodeproj">
          </BuildableReference>

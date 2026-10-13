@@ -21,7 +21,7 @@ xcodegen generate
 xcodebuild -project Scraps.xcodeproj -scheme "$SCHEME" -configuration Release \
     -destination "$DESTINATION" -derivedDataPath build.noindex/DerivedData \
     -archivePath "build.noindex/Archives/$SCHEME.xcarchive" \
-    archive CODE_SIGN_IDENTITY="$SIGNING_IDENTITY"
+    -allowProvisioningUpdates archive CODE_SIGN_IDENTITY="$SIGNING_IDENTITY"
 PRODUCT="build.noindex/Archives/$SCHEME.xcarchive/Products/Applications/Scraps.app"
 codesign --verify --deep --strict "$PRODUCT"
 codesign -d --entitlements - --xml "$PRODUCT"

@@ -68,7 +68,7 @@ xcodebuild -project Scraps.xcodeproj \
     -configuration "$CONFIGURATION" \
     -destination 'platform=macOS' \
     -derivedDataPath "$DERIVED" \
-    build
+    -allowProvisioningUpdates build
 
 # Validate the complete copy before touching the installed app.
 echo "==> Preparing and verifying the new app"

@@ -64,3 +64,7 @@ A notificação silenciosa no iOS responde em até 20 segundos, dentro do limite
 ### Preparação internacional e documentação
 
 Atualizados os textos em inglês/português e os roteiros de publicação, privacidade, widgets, animação, organização e continuidade. Documentados os grupos, contêiner, esquema privado, campos cifrados e separação Development/Production do CloudKit. A distribuição continua dependente de perfis, esquema em produção, URLs públicas e capturas reais do proprietário.
+
+### Identidade e verificação dos produtos
+
+Nomes dos produtos explícitos para manter os esquemas e a incorporação de widgets coerentes com os executáveis reais. Verificação inclui extensões, idiomas, privacidade, versão, biblioteca Metal e capacidades efetivamente assinadas de grupos, CloudKit e notificações. Instalação e arquivo permitem atualizar perfis pela conta do Xcode.
