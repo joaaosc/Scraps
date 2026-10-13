@@ -1,4 +1,4 @@
-# Auditoria da versão 1.0.0 (4)
+# Auditoria da versão 1.0.0 (5)
 
 ## Erros corrigidos
 

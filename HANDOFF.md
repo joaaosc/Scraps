@@ -1,6 +1,6 @@
 # Scraps — desenvolvimento e validação
 
-Atualizado em 13/10/2026. Desenvolvimento diretamente na `main`, com commits por funcionalidade. Versão em preparação: 1.0.0 (4), macOS 27 e iOS/iPadOS 27.
+Atualizado em 13/10/2026. Desenvolvimento diretamente na `main`, com commits por funcionalidade. Versão em preparação: 1.0.0 (5), macOS 27 e iOS/iPadOS 27.
 
 ## Funcionalidades integradas
 
@@ -88,3 +88,7 @@ Notas arquivadas também podem ser movidas para Apagadas recentemente pela bibli
 ### Reconciliação do arquivo no Mac
 
 Uma notificação do próprio salvamento de arquivo não cria uma cópia recuperada enquanto a gravação termina. Desarquivar remove o bloqueio local da janela e volta a mostrar a nota. A conferência visual desse fluxo permanece no roteiro manual.
+
+### Versão para conferência final
+
+Preparada a versão 1.0.0 (5) para distinguir a ampliação nas instalações locais. Alternar rapidamente a sincronização não permite que uma operação de desligamento antiga substitua o estado atual dos ajustes. A revisão anterior passou nos 162 testes nativos, nos builds Mac/iOS, na verificação dos produtos e nos arquivos Release; falta concluir o CI desta revisão final.

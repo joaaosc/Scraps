@@ -68,7 +68,7 @@ interação e de dispositivo abaixo são manuais.
 
 ## Atualização e salvamento no Mac
 
-- [ ] A nova instalação mostra **1.0.0 (4)** no Terminal e abre a cópia em
+- [ ] A nova instalação mostra **1.0.0 (5)** no Terminal e abre a cópia em
   `/Applications`. Os dados existentes reaparecem.
 - [ ] Editar e sair imediatamente mantém a última edição ao abrir novamente.
 - [ ] Fechar uma nota editada e sair imediatamente mantém o conteúdo na

@@ -35,12 +35,13 @@ public final class StickyCloudSync {
         let acceptAccountChange = enabled && status == .accountChanged
         transition?.cancel()
         transition = Task {
-            guard let service else { return }
-            if isEnabled {
+            guard let service, !Task.isCancelled else { return }
+            if enabled {
                 status = .syncing
                 await service.start(acceptAccountChange: acceptAccountChange)
             } else {
                 await service.stop()
+                guard !Task.isCancelled, !isEnabled else { return }
                 status = .disabled
             }
         }
