@@ -11,6 +11,7 @@ let package = Package(
         .library(name: "StickyDomain", targets: ["StickyDomain"]),
         .library(name: "StickyStorage", targets: ["StickyStorage"]),
         .library(name: "StickyUI", targets: ["StickyUI"]),
+        .library(name: "StickyIntents", targets: ["StickyIntents"]),
     ],
     targets: [
         // What a sticky is and what keeping one means. Foundation only, so
@@ -28,6 +29,13 @@ let package = Package(
                 "StickyDomain",
                 "StickyStorage",
             ]
+        ),
+        // What Spotlight, Siri and Shortcuts can ask for. Depends on the UI
+        // because every intent ends in a window, and windows exist only in
+        // the app process.
+        .target(
+            name: "StickyIntents",
+            dependencies: ["StickyUI"]
         ),
         .testTarget(
             name: "StickyDomainTests",
