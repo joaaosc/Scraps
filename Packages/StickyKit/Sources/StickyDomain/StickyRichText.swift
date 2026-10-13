@@ -22,34 +22,36 @@ public struct StickyRichText: Codable, Equatable, Sendable {
             guard run.location >= 0, run.length > 0,
                   run.location <= units.count,
                   run.length <= units.count - run.location,
-                  run.bold || run.italic else { return false }
+                  run.hasFormatting else { return false }
             return isBoundary(run.location) && isBoundary(run.location + run.length)
         }
-        // Imported attributes can overlap. Combine their emphasis instead of
-        // allowing the last run to replace a previously applied style.
-        let boundaries = valid.flatMap { run in
-            [(run.location, run.bold ? 1 : 0, run.italic ? 1 : 0),
-             (run.location + run.length, run.bold ? -1 : 0, run.italic ? -1 : 0)]
+        let boundaries = valid.enumerated().flatMap { index, run in
+            [(run.location, index, true), (run.location + run.length, index, false)]
         }.sorted { $0.0 < $1.0 }
         var result: [StickyTextRun] = []
-        var bold = 0
-        var italic = 0
+        var active = Set<Int>()
         var index = 0
         while index < boundaries.count {
             let location = boundaries[index].0
             while index < boundaries.count, boundaries[index].0 == location {
-                bold += boundaries[index].1
-                italic += boundaries[index].2
+                let event = boundaries[index]
+                if event.2 { active.insert(event.1) } else { active.remove(event.1) }
                 index += 1
             }
-            guard index < boundaries.count, bold > 0 || italic > 0 else { continue }
-            let length = boundaries[index].0 - location
+            guard index < boundaries.count, !active.isEmpty else { continue }
+            let styles = active.sorted().map { valid[$0] }
+            let value = StickyTextRun(
+                location: location, length: boundaries[index].0 - location,
+                bold: styles.contains { $0.bold }, italic: styles.contains { $0.italic },
+                underline: styles.contains { $0.underline }, strikethrough: styles.contains { $0.strikethrough },
+                highlight: styles.contains { $0.highlight },
+                style: styles.last(where: { $0.style != .body })?.style ?? .body,
+                link: styles.compactMap(\.link).last
+            )
             if let previous = result.last, previous.location + previous.length == location,
-               previous.bold == (bold > 0), previous.italic == (italic > 0) {
-                result[result.count - 1].length += length
-            } else {
-                result.append(StickyTextRun(location: location, length: length, bold: bold > 0, italic: italic > 0))
-            }
+               previous.sameAttributes(as: value) {
+                result[result.count - 1].length += value.length
+            } else { result.append(value) }
         }
         return StickyRichText(runs: result)
     }
@@ -60,16 +62,44 @@ public struct StickyTextRun: Codable, Equatable, Sendable {
     public var length: Int
     public var bold: Bool
     public var italic: Bool
+    public var underline: Bool
+    public var strikethrough: Bool
+    public var highlight: Bool
+    public var style: StickyTextStyle
+    public var link: URL?
 
-    public init(location: Int, length: Int, bold: Bool = false, italic: Bool = false) {
+    public init(location: Int, length: Int, bold: Bool = false, italic: Bool = false,
+                underline: Bool = false, strikethrough: Bool = false, highlight: Bool = false,
+                style: StickyTextStyle = .body, link: URL? = nil) {
         self.location = location
         self.length = length
         self.bold = bold
         self.italic = italic
+        self.underline = underline
+        self.strikethrough = strikethrough
+        self.highlight = highlight
+        self.style = style
+        self.link = Self.safeLink(link)
+    }
+
+    public var hasFormatting: Bool {
+        bold || italic || underline || strikethrough || highlight || style != .body || link != nil
+    }
+
+    func sameAttributes(as other: StickyTextRun) -> Bool {
+        bold == other.bold && italic == other.italic && underline == other.underline
+            && strikethrough == other.strikethrough && highlight == other.highlight
+            && style == other.style && link == other.link
+    }
+
+    public static func safeLink(_ url: URL?) -> URL? {
+        guard let url, let scheme = url.scheme?.lowercased(), ["https", "http", "mailto", "tel"].contains(scheme) else { return nil }
+        if scheme == "https" || scheme == "http" { return url.host?.isEmpty == false ? url : nil }
+        return url
     }
 
     private enum CodingKeys: String, CodingKey {
-        case location, length, bold, italic
+        case location, length, bold, italic, underline, strikethrough, highlight, style, link
     }
 
     public init(from decoder: any Decoder) throws {
@@ -78,5 +108,10 @@ public struct StickyTextRun: Codable, Equatable, Sendable {
         length = try values.decode(Int.self, forKey: .length)
         bold = try values.decodeIfPresent(Bool.self, forKey: .bold) ?? false
         italic = try values.decodeIfPresent(Bool.self, forKey: .italic) ?? false
+        underline = try values.decodeIfPresent(Bool.self, forKey: .underline) ?? false
+        strikethrough = try values.decodeIfPresent(Bool.self, forKey: .strikethrough) ?? false
+        highlight = try values.decodeIfPresent(Bool.self, forKey: .highlight) ?? false
+        style = (try? values.decodeIfPresent(StickyTextStyle.self, forKey: .style)) ?? .body
+        link = Self.safeLink(try? values.decodeIfPresent(URL.self, forKey: .link))
     }
 }

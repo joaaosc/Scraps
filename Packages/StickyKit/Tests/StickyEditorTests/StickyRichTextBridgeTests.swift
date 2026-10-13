@@ -127,6 +127,24 @@ struct StickyRichTextBridgeTests {
         }
     }
 
+    @Test("All semantic styles, links and decorations survive native editing and persistence")
+    func fullFormattingRoundTrip() throws {
+        let text = "👩🏽‍💻 café 東京"
+        for style in StickyTextStyle.allCases {
+            let rich = StickyRichText(runs: [StickyTextRun(location: 0, length: text.utf16.count, bold: true, italic: true, underline: true, strikethrough: true, highlight: true, style: style, link: URL(string: "https://example.com"))])
+            let persisted = try JSONDecoder().decode(StickyRichText.self, from: JSONEncoder().encode(rich))
+            let native = StickyRichTextBridge.attributedText(text: text, richText: persisted)
+            #expect(StickyRichTextBridge.richText(from: native, in: context) == rich)
+            var attributes = AttributeContainer()
+            attributes.font = StickyRichTextBridge.canonicalFont(style: style, bold: true, italic: true)
+            attributes.link = URL(string: "https://example.com")
+            attributes.underlineStyle = .single
+            let original = attributes
+            StickyFormattingDefinition(context: context).constrain(&attributes)
+            #expect(attributes == original)
+        }
+    }
+
     #if os(macOS)
     @Test("Sharing RTF preserves both text and real native font traits")
     func sharingRTF() throws {

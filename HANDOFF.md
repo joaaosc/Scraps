@@ -24,3 +24,7 @@ As regras portáveis passam em Linux. Compilação e validação dos produtos co
 ## Pendências de publicação
 
 Concluir a ampliação, passar o CI nativo e atualizar a documentação. A distribuição exige perfis com CloudKit, notificações e grupos de aplicativos, esquema CloudKit em produção, URLs de suporte/privacidade e capturas reais. Não houve publicação na App Store.
+
+### Formatação ampliada
+
+Editor nativo com título, cabeçalho, legenda, código, sublinhado, tachado, destaque e links, além das listas e caixas de marcar. A representação portátil preserva Unicode e os documentos antigos; links de arquivos locais são excluídos. Acrescentadas verificações de compatibilidade, preservação na edição de listas e conversão nativa. Validação com SDK Apple em andamento.

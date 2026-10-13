@@ -12,7 +12,7 @@ struct StickyFontConstraint: AttributedTextValueConstraint {
         guard let font = container.font else { return }
         let emphasis = StickyRichTextBridge.emphasis(of: font, in: context)
         container.font = StickyRichTextBridge.canonicalFont(
-            bold: emphasis.bold, italic: emphasis.italic
+            style: emphasis.style, bold: emphasis.bold, italic: emphasis.italic
         )
     }
 }

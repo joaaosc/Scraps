@@ -79,6 +79,10 @@ public enum StickyListEditing {
                 prefix = String(content.prefix(2))
                 style = .checklist
                 checked = content.hasPrefix("☑ ")
+            } else if let marker = ["- [ ] ", "- [x] ", "- [X] ", "[ ] ", "[x] ", "[X] "].first(where: { content.hasPrefix($0) }) {
+                prefix = marker
+                style = .checklist
+                checked = marker.lowercased().contains("[x]")
             } else if content.hasPrefix("• ") || content.hasPrefix("- ") || content.hasPrefix("* ") {
                 prefix = String(content.prefix(2))
                 style = .bullet
@@ -123,17 +127,16 @@ public enum StickyListEditing {
                 let runEnd = run.location + run.length
                 let beforeEnd = min(runEnd, range.location)
                 if beforeEnd > run.location {
-                    adjustedRuns.append(StickyTextRun(
-                        location: run.location, length: beforeEnd - run.location,
-                        bold: run.bold, italic: run.italic
-                    ))
+                    var segment = run
+                    segment.length = beforeEnd - run.location
+                    adjustedRuns.append(segment)
                 }
                 let afterStart = max(run.location, end)
                 if runEnd > afterStart {
-                    adjustedRuns.append(StickyTextRun(
-                        location: afterStart + delta, length: runEnd - afterStart,
-                        bold: run.bold, italic: run.italic
-                    ))
+                    var segment = run
+                    segment.location = afterStart + delta
+                    segment.length = runEnd - afterStart
+                    adjustedRuns.append(segment)
                 }
             }
             runs = adjustedRuns
