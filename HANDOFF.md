@@ -40,3 +40,7 @@ Extensões WidgetKit para Mac, iPhone e iPad com nota configurável e captura r�
 ### Diagnóstico da compilação Metal
 
 O CI passa a verificar o compilador e compilar o shader isoladamente antes do pacote, para tornar visíveis erros que o executor do pacote omite. Ainda não há confirmação de build da ampliação.
+
+### Integração concorrente e ferramenta Metal
+
+Incorporada a alteração remota dos esquemas do Xcode sem remover as funcionalidades recentes e sem reescrever o histórico. Os esquemas são regenerados a partir de project.yml. Identificado que o executor nativo não possui Metal Toolchain; o CI passa a instalar o componente oficial quando necessário. No Xcode local, instalar em Settings > Components se solicitado.

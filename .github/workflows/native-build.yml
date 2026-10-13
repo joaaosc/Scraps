@@ -23,6 +23,7 @@ jobs:
           xcrun --sdk iphonesimulator --show-sdk-version
       - name: Verify Metal compiler
         run: |
+          if ! xcrun metal --version; then xcodebuild -downloadComponent metalToolchain; fi
           xcrun metal --version
           xcrun --sdk macosx metal -c Packages/StickyKit/Sources/StickyEditor/Shaders/StickyEffects.metal -o /tmp/ScrapsEffects.air
       - name: Generate project
