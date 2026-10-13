@@ -17,7 +17,7 @@
 "Close All Stickies" = "Close All Stickies";
 "Close this sticky" = "Close this sticky";
 "Closed stickies appear here for 30 days." = "Closed stickies appear here for 30 days.";
-"Closed stickies can be restored for 30 days. Session stickies disappear when you quit. Notes stay on this device." = "Closed stickies can be restored for 30 days. Session stickies disappear when you quit. Notes stay on this device.";
+"Closed stickies can be restored for 30 days. Session stickies disappear when you quit. Enable iCloud to sync persistent notes." = "Closed stickies can be restored for 30 days. Session stickies disappear when you quit. Enable iCloud to sync persistent notes.";
 "Collapse" = "Collapse";
 "Collapse Sticky" = "Collapse Sticky";
 "Collapse or Expand" = "Collapse or Expand";
@@ -204,3 +204,4 @@
 "Open Sticky" = "Open Sticky";
 "Select a Sticky" = "Select a Sticky";
 "Your thoughts, together in one place." = "Your thoughts, together in one place.";
+"On This Device and iCloud" = "On This Device and iCloud";

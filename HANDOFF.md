@@ -72,3 +72,7 @@ Nomes dos produtos explícitos para manter os esquemas e a incorporação de wid
 ### Integração dos widgets no SDK 27
 
 Os testes nativos do pacote passaram. Corrigida a importação explícita exigida pelos botões interativos dos widgets. O shader recebe uma cópia do estado de ativação, evitando acesso ao estado da interface por uma closure concorrente. Builds completos em validação.
+
+### Ajustes e movimento no Mac
+
+Os ajustes distinguem armazenamento local de sincronização ativa. As janelas flutuantes informam a ativação real do aplicativo ao efeito Metal, pois não pertencem a uma cena WindowGroup. Mudanças de acessibilidade interrompem imediatamente a animação e uma troca rápida de cor não deixa o efeito ativo indefinidamente.

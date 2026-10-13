@@ -34,6 +34,7 @@ public struct StickyMetalAccent: View {
         .allowsHitTesting(false)
         .accessibilityHidden(true)
         .task(id: trigger) {
+            active = false
             guard Self.hasMetal, !reduceMotion, !reduceTransparency, contrast != .increased,
                   !ProcessInfo.processInfo.isLowPowerModeEnabled, scenePhase == .active else { return }
             started = Date(); active = true
@@ -41,6 +42,8 @@ public struct StickyMetalAccent: View {
             active = false
         }
         .onChange(of: reduceMotion) { _, value in if value { active = false } }
+        .onChange(of: reduceTransparency) { _, value in if value { active = false } }
+        .onChange(of: contrast) { _, value in if value == .increased { active = false } }
         .onChange(of: scenePhase) { _, value in if value != .active { active = false } }
     }
 }

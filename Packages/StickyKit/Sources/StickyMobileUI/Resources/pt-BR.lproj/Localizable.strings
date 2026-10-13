@@ -17,7 +17,7 @@
 "Close All Stickies" = "Fechar todas as notas";
 "Close this sticky" = "Fechar esta nota";
 "Closed stickies appear here for 30 days." = "As notas fechadas ficam aqui por 30 dias.";
-"Closed stickies can be restored for 30 days. Session stickies disappear when you quit. Notes stay on this device." = "As notas fechadas podem ser recuperadas por 30 dias. As notas de sessão desaparecem ao sair do app. As notas ficam neste dispositivo.";
+"Closed stickies can be restored for 30 days. Session stickies disappear when you quit. Enable iCloud to sync persistent notes." = "As notas fechadas podem ser recuperadas por 30 dias. As notas de sessão desaparecem ao sair do app. Ative iCloud para sincronizar notas persistentes.";
 "Collapse" = "Recolher";
 "Collapse Sticky" = "Recolher nota";
 "Collapse or Expand" = "Recolher ou expandir";
@@ -204,3 +204,4 @@
 "Open Sticky" = "Abrir nota";
 "Select a Sticky" = "Selecione uma nota";
 "Your thoughts, together in one place." = "Suas ideias, juntas em um só lugar.";
+"On This Device and iCloud" = "Neste dispositivo e no iCloud";

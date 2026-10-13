@@ -46,7 +46,7 @@ struct ScrapsSettingsView: View {
                 Button("Recently Deleted…") { ScrapsUtilityWindows.shared.showRecentlyDeleted() }
                 Button("Send All to Notes…") { StickyBoard.shared.exportAllToNotes() }
                     .disabled(!StickyBoard.shared.hasOpenStickies)
-                Text("Closed stickies can be restored for 30 days. Session stickies disappear when you quit. Notes stay on this device.")
+                Text("Closed stickies can be restored for 30 days. Session stickies disappear when you quit. Enable iCloud to sync persistent notes.")
                     .font(.caption).foregroundStyle(.secondary)
             }
             Section {

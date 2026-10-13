@@ -1,3 +1,4 @@
+import AppKit
 import StickyDomain
 import StickyEditor
 import SwiftUI
@@ -7,6 +8,7 @@ struct StickyView: View {
     @Bindable var model: StickyModel
     @State private var isChoosingColor = false
     @State private var showsTags = false
+    @State private var appActive = NSApplication.shared.isActive
     @Environment(\.colorSchemeContrast) private var contrast
 
     var body: some View {
@@ -42,7 +44,12 @@ struct StickyView: View {
             }
         }
         .disabled(model.isClosing || model.isArchived)
-        .overlay { StickyMetalAccent(trigger: model.id.uuidString + model.color.rawValue) }
+        .overlay {
+            StickyMetalAccent(trigger: model.id.uuidString + model.color.rawValue)
+                .environment(\.scenePhase, appActive ? .active : .inactive)
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in appActive = true }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didResignActiveNotification)) { _ in appActive = false }
     }
 
     private var header: some View {

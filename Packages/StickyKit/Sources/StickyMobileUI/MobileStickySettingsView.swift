@@ -24,7 +24,7 @@ struct MobileStickySettingsView: View {
                 }
                 Section {
                     LabeledContent {
-                        Text("On This Device", bundle: .module)
+                        Text(StickyCloudSync.shared.isEnabled ? LocalizedStringKey("On This Device and iCloud") : LocalizedStringKey("On This Device"), bundle: .module)
                             .foregroundStyle(.secondary)
                     } label: {
                         Text("Storage", bundle: .module)
