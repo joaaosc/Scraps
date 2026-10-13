@@ -10,6 +10,7 @@ let package = Package(
     products: [
         .library(name: "StickyDomain", targets: ["StickyDomain"]),
         .library(name: "StickyStorage", targets: ["StickyStorage"]),
+        .library(name: "StickyUI", targets: ["StickyUI"]),
     ],
     targets: [
         // What a sticky is and what keeping one means. Foundation only, so
@@ -20,6 +21,14 @@ let package = Package(
             name: "StickyStorage",
             dependencies: ["StickyDomain"]
         ),
+        // The windows: one glass panel per sticky, kept equal to the store.
+        .target(
+            name: "StickyUI",
+            dependencies: [
+                "StickyDomain",
+                "StickyStorage",
+            ]
+        ),
         .testTarget(
             name: "StickyDomainTests",
             dependencies: ["StickyDomain"]
@@ -29,6 +38,14 @@ let package = Package(
             dependencies: [
                 "StickyDomain",
                 "StickyStorage",
+            ]
+        ),
+        .testTarget(
+            name: "StickyUITests",
+            dependencies: [
+                "StickyDomain",
+                "StickyStorage",
+                "StickyUI",
             ]
         ),
     ],
