@@ -170,6 +170,20 @@ public final class StickyBoard {
     public func setArchived(_ archived: Bool, id: UUID) {
         mutate(id: id) { $0.isArchived = archived }
     }
+    public func moveToTrash(_ id: UUID) {
+        if let model = controllers[id]?.model { model.requestClose(); return }
+        guard let note = currentSnapshot(id) else { return }
+        let session = sessionIDs.contains(id)
+        let task = Task { @MainActor in
+            if session { await sessionStore.delete(id: id) }
+            else if let recovery = store as? any RecentlyDeletedStickyStore {
+                try await recovery.moveToTrash(note, at: Date())
+            } else { throw StickyBoardError.storeUnavailable }
+            await reconcile()
+        }
+        track(task, id: UUID())
+    }
+
     public func duplicate(_ id: UUID) {
         guard let original = currentSnapshot(id) else { return }
         let copy = original.duplicated()
@@ -181,12 +195,13 @@ public final class StickyBoard {
             if let model = controllers[id]?.model {
                 guard !model.isClosing else { return }
                 var note = model.snapshot
+                let wasArchived = note.isArchived
                 change(&note)
                 model.isPinned = note.isPinned
                 model.isArchived = note.isArchived
                 model.tags = note.tags
                 await model.flush().value
-                guard !model.hasUnsavedChanges else { return }
+                guard !model.hasUnsavedChanges else { model.isArchived = wasArchived; return }
             } else {
                 guard var note = currentSnapshot(id) else { return }
                 let previous = note

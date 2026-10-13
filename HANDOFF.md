@@ -80,3 +80,7 @@ Os ajustes distinguem armazenamento local de sincronização ativa. As janelas f
 ### Auditoria do estado CloudKit
 
 Gravações pendentes de notas que já desapareceram são retiradas da fila. Importações de exclusão e recuperação removem operações adiadas antigas do mesmo identificador. Documentos de esquema desconhecido são recusados sem reescrever o conteúdo remoto.
+
+### Recuperação na biblioteca Mac
+
+Notas arquivadas também podem ser movidas para Apagadas recentemente pela biblioteca. Favoritos, duplicação e arquivo estão no menu da barra do Mac. Se arquivar falhar no salvamento, a nota continua editável para preservar e recuperar o rascunho.

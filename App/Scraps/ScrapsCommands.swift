@@ -47,6 +47,11 @@ struct ScrapsCommands: Commands {
                         Button(color.localizedName) { board.setActiveColor(color) }
                     }
                 }
+                Button(board.activeModel?.isPinned == true ? String(localized: "Remove Favorite") : String(localized: "Add Favorite")) {
+                    if let model = board.activeModel { model.isPinned.toggle() }
+                }
+                Button("Duplicate") { if let id = board.activeStickyID { board.duplicate(id) } }
+                Button("Archive") { if let id = board.activeStickyID { board.setArchived(true, id: id) } }
                 Divider()
                 Button("Send to Notes", action: board.sendActiveToNotes).disabled(board.activeModel?.canSend != true)
                 Button("Copy Text", action: board.copyActiveText).disabled(board.activeModel?.text.isEmpty != false)

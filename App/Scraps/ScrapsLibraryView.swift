@@ -105,5 +105,7 @@ struct ScrapsLibraryView: View {
         Button(note.isArchived ? String(localized: "Unarchive") : String(localized: "Archive"), systemImage: "archivebox") {
             board.setArchived(!note.isArchived, id: note.id)
         }
+        Divider()
+        Button("Delete", systemImage: "trash", role: .destructive) { board.moveToTrash(note.id) }
     }
 }
