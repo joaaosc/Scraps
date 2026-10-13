@@ -20,7 +20,12 @@ settings:
     SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor
     SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY: YES
   configs:
+    Debug:
+      ICLOUD_ENVIRONMENT: Development
+      APS_ENVIRONMENT: development
     Release:
+      ICLOUD_ENVIRONMENT: Production
+      APS_ENVIRONMENT: production
       OTHER_CODE_SIGN_FLAGS: --timestamp
       CODE_SIGN_INJECT_BASE_ENTITLEMENTS: NO
       SWIFT_COMPILATION_MODE: wholemodule
@@ -44,6 +49,10 @@ targets:
         LSApplicationCategoryType: public.app-category.productivity
         CFBundleLocalizations: [en, pt-BR]
         ITSAppUsesNonExemptEncryption: false
+        NSUserActivityTypes: [com.joaocosta.Scraps.edit]
+        CFBundleURLTypes:
+          - CFBundleURLName: com.joaocosta.Scraps
+            CFBundleURLSchemes: [scraps]
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.joaocosta.Scraps
@@ -68,6 +77,8 @@ targets:
         product: StickyStorage
       - package: StickyKit
         product: StickyUI
+      - package: StickyKit
+        product: StickySync
   ScrapsMobile:
     type: application
     platform: iOS
@@ -84,6 +95,11 @@ targets:
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         CFBundleLocalizations: [en, pt-BR]
         ITSAppUsesNonExemptEncryption: false
+        NSUserActivityTypes: [com.joaocosta.Scraps.edit]
+        CFBundleURLTypes:
+          - CFBundleURLName: com.joaocosta.Scraps
+            CFBundleURLSchemes: [scraps]
+        UIBackgroundModes: [remote-notification]
         UILaunchScreen: {}
         UIApplicationSceneManifest:
           UIApplicationSupportsMultipleScenes: false
@@ -99,6 +115,7 @@ targets:
         CODE_SIGN_STYLE: Automatic
         DEVELOPMENT_TEAM: 33FPG9442W
         TARGETED_DEVICE_FAMILY: "1,2"
+        CODE_SIGN_ENTITLEMENTS: App/ScrapsMobile/ScrapsMobile.entitlements
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
     dependencies:
@@ -110,6 +127,8 @@ targets:
         product: StickyMobileUI
       - package: StickyKit
         product: StickyIntents
+      - package: StickyKit
+        product: StickySync
 schemes:
   Scraps:
     build:

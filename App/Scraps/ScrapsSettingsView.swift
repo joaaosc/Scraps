@@ -1,5 +1,6 @@
 import StickyDomain
 import StickyEditor
+import StickySync
 import StickyUI
 import SwiftUI
 
@@ -12,6 +13,7 @@ struct ScrapsSettingsView: View {
 
     var body: some View {
         Form {
+            StickySyncSettingsSection()
             Section("New stickies") {
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Default color")

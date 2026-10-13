@@ -24,6 +24,6 @@ xcodebuild -project Scraps.xcodeproj -scheme "$SCHEME" -configuration Release \
     archive CODE_SIGN_IDENTITY="$SIGNING_IDENTITY"
 PRODUCT="build.noindex/Archives/$SCHEME.xcarchive/Products/Applications/Scraps.app"
 codesign --verify --deep --strict "$PRODUCT"
-codesign -d --entitlements - "$PRODUCT"
+codesign -d --entitlements - --xml "$PRODUCT"
 python3 Scripts/verify-product.py "$PRODUCT" --distribution
 echo "Archive ready in build.noindex/Archives/$SCHEME.xcarchive"

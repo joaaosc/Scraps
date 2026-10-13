@@ -197,8 +197,17 @@ final class StickyWindowController: NSObject, NSWindowDelegate {
 
     func windowDidMove(_ notification: Notification) { recordFrame() }
     func windowDidResize(_ notification: Notification) { recordFrame() }
-    func windowDidBecomeKey(_ notification: Notification) { onActivated(id) }
-    func windowDidResignKey(_ notification: Notification) { onDeactivated(id) }
+    func windowDidBecomeKey(_ notification: Notification) {
+        onActivated(id)
+        if !model.isSessionOnly {
+            panel.userActivity = StickyNavigation.handoff(for: model.snapshot)
+            panel.userActivity?.becomeCurrent()
+        }
+    }
+    func windowDidResignKey(_ notification: Notification) {
+        onDeactivated(id)
+        panel.userActivity?.resignCurrent()
+    }
     func windowShouldClose(_ sender: NSWindow) -> Bool { model.requestClose(); return false }
 }
 

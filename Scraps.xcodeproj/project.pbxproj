@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		07054D98D2296AE3AC8B2D8C /* ScrapsApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4FC355B48E503E03AD7E7E60 /* ScrapsApp.swift */; };
+		0C65C10AB7D82EBA35FD80FA /* ScrapsMobileDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81DEC6BB211342250B51827F /* ScrapsMobileDelegate.swift */; };
 		3342251C69703D2B700D2729 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 10898C7AF27BAAF615AB51D4 /* PrivacyInfo.xcprivacy */; };
 		35070ACA0412B1ECEC383B9E /* StickyIntents in Frameworks */ = {isa = PBXBuildFile; productRef = 036A5789EA3A618B0A05BF47 /* StickyIntents */; };
 		45FD3EE120A332D5002167D5 /* ScrapsWelcome.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23C522C217BE580F0DADE7CE /* ScrapsWelcome.swift */; };
@@ -17,6 +18,8 @@
 		854FAFEB5923B1F4939010D8 /* ScrapsApplicationDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 406A5B128D48CED263AD9E89 /* ScrapsApplicationDelegate.swift */; };
 		88BFFFA7C30C71471B3FAAC4 /* ScrapsMobileApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 79609304EF22CCA76F2ACCDC /* ScrapsMobileApp.swift */; };
 		8C3CB54D61EB1822714FD665 /* StickyStorage in Frameworks */ = {isa = PBXBuildFile; productRef = 1C3FD61789A95BE3952AEAFC /* StickyStorage */; };
+		8C8037432B357922663E7416 /* StickySync in Frameworks */ = {isa = PBXBuildFile; productRef = 48066504F269BA005FCEDF0E /* StickySync */; };
+		90470758B9FE03A3A4AF5594 /* StickySync in Frameworks */ = {isa = PBXBuildFile; productRef = A67C83DAB1D1C78058499A81 /* StickySync */; };
 		99D68D4129F013C4102198BB /* StickyDomain in Frameworks */ = {isa = PBXBuildFile; productRef = B14AADF6DEEA71468F5812FF /* StickyDomain */; };
 		9AEA0BE58A06F775BEB3223B /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 72B7B891F8355797BE1025FC /* Assets.xcassets */; };
 		9CF36976D8F9C3A4F05366F6 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = E996AC719AADF394E542FF06 /* Localizable.strings */; };
@@ -61,10 +64,12 @@
 		79609304EF22CCA76F2ACCDC /* ScrapsMobileApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScrapsMobileApp.swift; sourceTree = "<group>"; };
 		80293D65B6B7FB87FD68B1B7 /* ScrapsIntentsPackage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScrapsIntentsPackage.swift; sourceTree = "<group>"; };
 		8050203A6AA48240B026FB14 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		81DEC6BB211342250B51827F /* ScrapsMobileDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScrapsMobileDelegate.swift; sourceTree = "<group>"; };
 		8E7DF40B81F58A9B95800FE0 /* ScrapsCommands.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScrapsCommands.swift; sourceTree = "<group>"; };
 		9CB81B3966CD4735F1DDD2CA /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
 		AA750E648A9C082DC8F0A2F8 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/AppShortcuts.strings; sourceTree = "<group>"; };
 		AC9EB86676959DC16391C28C /* Scraps.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Scraps.entitlements; sourceTree = "<group>"; };
+		B0829CD5ACEE9026520B563C /* ScrapsMobile.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = ScrapsMobile.entitlements; sourceTree = "<group>"; };
 		B8F6E5D48C9695E186A63B58 /* ScrapsUtilityWindows.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScrapsUtilityWindows.swift; sourceTree = "<group>"; };
 		C826B1C9F524CB19B2A203E0 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		D373FE6069CE0E15D2D5593B /* StickyKit */ = {isa = PBXFileReference; lastKnownFileType = folder; name = StickyKit; path = Packages/StickyKit; sourceTree = SOURCE_ROOT; };
@@ -79,6 +84,7 @@
 				8C3CB54D61EB1822714FD665 /* StickyStorage in Frameworks */,
 				B09AA7417071B3F5FBE4E24C /* StickyMobileUI in Frameworks */,
 				35070ACA0412B1ECEC383B9E /* StickyIntents in Frameworks */,
+				90470758B9FE03A3A4AF5594 /* StickySync in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -91,6 +97,7 @@
 				71ACF9A14DBCBC6374B84FB0 /* StickyIntents in Frameworks */,
 				AEC16ADA4D17DC38B780C27C /* StickyStorage in Frameworks */,
 				A39393DFF8B913ABE94956CB /* StickyUI in Frameworks */,
+				8C8037432B357922663E7416 /* StickySync in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -185,8 +192,10 @@
 			isa = PBXGroup;
 			children = (
 				C826B1C9F524CB19B2A203E0 /* Info.plist */,
+				B0829CD5ACEE9026520B563C /* ScrapsMobile.entitlements */,
 				79609304EF22CCA76F2ACCDC /* ScrapsMobileApp.swift */,
 				14CD36E7375FA291E896D959 /* ScrapsMobileAppShortcuts.swift */,
+				81DEC6BB211342250B51827F /* ScrapsMobileDelegate.swift */,
 				74DE01BEF0C605CAA7F4D22C /* Resources */,
 			);
 			path = ScrapsMobile;
@@ -221,6 +230,7 @@
 				1C3FD61789A95BE3952AEAFC /* StickyStorage */,
 				CF99FFCD754FFBFD699FBDB1 /* StickyMobileUI */,
 				036A5789EA3A618B0A05BF47 /* StickyIntents */,
+				A67C83DAB1D1C78058499A81 /* StickySync */,
 			);
 			productName = ScrapsMobile;
 			productReference = 2AA5518A489DAEF13270AAE7 /* ScrapsMobile.app */;
@@ -245,6 +255,7 @@
 				C4BE7BF90FE0EDF7A9583683 /* StickyIntents */,
 				F5EA855AC72A12C262B795BD /* StickyStorage */,
 				8E1EA229D5E7D53AE028C5B7 /* StickyUI */,
+				48066504F269BA005FCEDF0E /* StickySync */,
 			);
 			productName = Scraps;
 			productReference = 39D94DAE9AF7BADBB68584BF /* Scraps.app */;
@@ -342,6 +353,7 @@
 			files = (
 				88BFFFA7C30C71471B3FAAC4 /* ScrapsMobileApp.swift in Sources */,
 				A6C0522333093FAC584C0D9E /* ScrapsMobileAppShortcuts.swift in Sources */,
+				0C65C10AB7D82EBA35FD80FA /* ScrapsMobileDelegate.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -392,6 +404,7 @@
 			baseConfigurationReference = 75FDADD6384E00970192765E /* Version.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
+				APS_ENVIRONMENT = development;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
@@ -439,6 +452,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
+				ICLOUD_ENVIRONMENT = Development;
 				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
 				MACOSX_DEPLOYMENT_TARGET = 27.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
@@ -460,6 +474,7 @@
 			baseConfigurationReference = 75FDADD6384E00970192765E /* Version.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
+				APS_ENVIRONMENT = production;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
@@ -502,6 +517,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
+				ICLOUD_ENVIRONMENT = Production;
 				IPHONEOS_DEPLOYMENT_TARGET = 27.0;
 				MACOSX_DEPLOYMENT_TARGET = 27.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
@@ -573,6 +589,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = App/ScrapsMobile/ScrapsMobile.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = 33FPG9442W;
@@ -594,6 +611,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = App/ScrapsMobile/ScrapsMobile.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = 33FPG9442W;
@@ -662,9 +680,17 @@
 			isa = XCSwiftPackageProductDependency;
 			productName = StickyStorage;
 		};
+		48066504F269BA005FCEDF0E /* StickySync */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = StickySync;
+		};
 		8E1EA229D5E7D53AE028C5B7 /* StickyUI */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = StickyUI;
+		};
+		A67C83DAB1D1C78058499A81 /* StickySync */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = StickySync;
 		};
 		B14AADF6DEEA71468F5812FF /* StickyDomain */ = {
 			isa = XCSwiftPackageProductDependency;

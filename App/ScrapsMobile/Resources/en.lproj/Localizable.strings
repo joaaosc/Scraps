@@ -146,3 +146,15 @@
 "Your notes are still open. Check the save error or wait for saving to finish, then try quitting again." = "Your notes are still open. Check the save error or wait for saving to finish, then try quitting again.";
 "OK" = "OK";
 "A newer version of this sticky is already saved. Your edit remains open." = "A newer version of this sticky is already saved. Your edit remains open.";
+"On this device only" = "On this device only";
+"Syncing with iCloud…" = "Syncing with iCloud…";
+"Up to date in iCloud" = "Up to date in iCloud";
+"Sign in to iCloud in System Settings to sync your notes." = "Sign in to iCloud in System Settings to sync your notes.";
+"iCloud account changed. Your local notes are kept; enable sync to use this account." = "iCloud account changed. Your local notes are kept; enable sync to use this account.";
+"Use iCloud" = "Use iCloud";
+"Sync Now" = "Sync Now";
+"Last synced" = "Last synced";
+"Across your devices" = "Across your devices";
+"Sync persistent notes, formatting, colors and tags between your Mac, iPhone and iPad. Session notes stay on this device." = "Sync persistent notes, formatting, colors and tags between your Mac, iPhone and iPad. Session notes stay on this device.";
+"This note has not reached this device yet" = "This note has not reached this device yet";
+"Enable iCloud sync on both devices and try again." = "Enable iCloud sync on both devices and try again.";

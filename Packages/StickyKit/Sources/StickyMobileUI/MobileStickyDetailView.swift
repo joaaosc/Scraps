@@ -1,6 +1,7 @@
 #if os(iOS)
 import StickyDomain
 import StickyEditor
+import StickyStorage
 import SwiftUI
 
 struct MobileStickyDetailView: View {
@@ -49,6 +50,16 @@ struct MobileStickyDetailView: View {
                 .background(sticky.color.mobileSurface)
                 .navigationTitle(sticky.title)
                 .navigationBarTitleDisplayMode(.inline)
+                .userActivity(StickyKitIdentity.handoffActivityType, isActive: !library.isSessionOnly(id: id)) { activity in
+                    activity.title = sticky.title
+                    activity.userInfo = ["noteID": sticky.id.uuidString]
+                    activity.requiredUserInfoKeys = ["noteID"]
+                    activity.targetContentIdentifier = sticky.id.uuidString
+                    activity.isEligibleForHandoff = true
+                    activity.isEligibleForSearch = false
+                    activity.isEligibleForPublicIndexing = false
+                    activity.isEligibleForPrediction = false
+                }
                 .toolbar {
                     ToolbarItemGroup(placement: .primaryAction) {
                         Menu {

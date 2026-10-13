@@ -1,5 +1,6 @@
 #if os(iOS)
 import StickyDomain
+import StickySync
 import SwiftUI
 
 struct MobileStickySettingsView: View {
@@ -9,6 +10,7 @@ struct MobileStickySettingsView: View {
     var body: some View {
         NavigationStack {
             Form {
+                StickySyncSettingsSection()
                 Section {
                     Picker(selection: $defaultColor) {
                         ForEach(StickyColor.allCases, id: \.self) { color in

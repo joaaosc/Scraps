@@ -146,3 +146,15 @@
 "Your notes are still open. Check the save error or wait for saving to finish, then try quitting again." = "Suas notas continuam abertas. Confira o erro de salvamento ou aguarde a conclusão e tente sair novamente.";
 "OK" = "OK";
 "A newer version of this sticky is already saved. Your edit remains open." = "Uma versão mais recente desta nota já foi salva. Sua edição continua aberta.";
+"On this device only" = "Somente neste dispositivo";
+"Syncing with iCloud…" = "Sincronizando com o iCloud…";
+"Up to date in iCloud" = "Atualizado no iCloud";
+"Sign in to iCloud in System Settings to sync your notes." = "Entre no iCloud nos ajustes do sistema para sincronizar suas notas.";
+"iCloud account changed. Your local notes are kept; enable sync to use this account." = "A conta do iCloud mudou. As notas locais foram mantidas; ative a sincronização para usar esta conta.";
+"Use iCloud" = "Usar iCloud";
+"Sync Now" = "Sincronizar agora";
+"Last synced" = "Última sincronização";
+"Across your devices" = "Em todos os seus dispositivos";
+"Sync persistent notes, formatting, colors and tags between your Mac, iPhone and iPad. Session notes stay on this device." = "Sincronize notas persistentes, formatação, cores e etiquetas entre Mac, iPhone e iPad. As notas de sessão ficam neste dispositivo.";
+"This note has not reached this device yet" = "Esta nota ainda não chegou a este dispositivo";
+"Enable iCloud sync on both devices and try again." = "Ative a sincronização com o iCloud nos dois dispositivos e tente novamente.";

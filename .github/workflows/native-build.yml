@@ -39,9 +39,10 @@ jobs:
       - name: Verify Mac development product
         run: |
           PRODUCT=build.noindex/DerivedData/Build/Products/Debug/Scraps.app
-          codesign --force --sign - --entitlements App/Scraps/Scraps.entitlements "$PRODUCT"
+          python3 Scripts/resolve-entitlements.py App/Scraps/Scraps.entitlements build.noindex/Debug.entitlements --configuration Debug --team 33FPG9442W
+          codesign --force --sign - --entitlements build.noindex/Debug.entitlements "$PRODUCT"
           codesign --verify --deep --strict "$PRODUCT"
-          codesign -d --entitlements - "$PRODUCT"
+          codesign -d --entitlements - --xml "$PRODUCT"
           python3 Scripts/verify-product.py "$PRODUCT"
           ditto -c -k --sequesterRsrc --keepParent "$PRODUCT" build.noindex/Scraps-macOS.zip
       - name: iOS and iPadOS build
@@ -61,9 +62,10 @@ jobs:
             -archivePath build.noindex/Archives/ScrapsMobile.xcarchive archive \
             CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=''
           PRODUCT=build.noindex/Archives/Scraps.xcarchive/Products/Applications/Scraps.app
-          codesign --force --sign - --options runtime --entitlements App/Scraps/Scraps.entitlements "$PRODUCT"
+          python3 Scripts/resolve-entitlements.py App/Scraps/Scraps.entitlements build.noindex/Release.entitlements --configuration Release --team 33FPG9442W
+          codesign --force --sign - --options runtime --entitlements build.noindex/Release.entitlements "$PRODUCT"
           codesign --verify --deep --strict "$PRODUCT"
-          codesign -d --entitlements - "$PRODUCT"
+          codesign -d --entitlements - --xml "$PRODUCT"
           python3 Scripts/verify-product.py "$PRODUCT" --release
           python3 Scripts/verify-product.py build.noindex/Archives/ScrapsMobile.xcarchive/Products/Applications/Scraps.app --release
           ditto -c -k --sequesterRsrc --keepParent "$PRODUCT" build.noindex/Scraps-macOS-release.zip

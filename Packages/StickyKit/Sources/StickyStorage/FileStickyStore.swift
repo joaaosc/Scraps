@@ -191,6 +191,16 @@ public actor FileStickyStore: RecentlyDeletedStickyStore {
         announce()
     }
 
+    public func deleteSynchronized(id: UUID, replacing expected: Sticky) throws {
+        let file = Self.fileURL(for: id, in: directoryURL)
+        guard FileManager.default.fileExists(atPath: file.path) else { return }
+        try Self.coordinatedWrite(at: file, deleting: true) { target in
+            guard try Self.readDocument(at: target) == expected else { throw FileStickyStoreError.newerEditExists(id) }
+            try FileManager.default.removeItem(at: target)
+        }
+        announce()
+    }
+
     /// A tombstone lives in the same atomic document as its contents. There is
     /// no remove-then-write interval in which a failure could lose the note.
     public func moveToTrash(_ sticky: Sticky, at date: Date) throws {

@@ -1,6 +1,8 @@
 #if os(iOS)
 import StickyDomain
 import StickyEditor
+import StickyStorage
+import StickySync
 import SwiftUI
 
 public struct MobileStickyRootView: View {
@@ -84,7 +86,11 @@ public struct MobileStickyRootView: View {
             .navigationDestination(for: UUID.self) { id in
                 MobileStickyDetailView(library: library, id: id)
             }
-            .refreshable { await library.reload() }
+            .refreshable {
+                await library.flush()
+                await StickyCloudSync.shared.synchronize()
+                await library.reload()
+            }
         }
         .sheet(item: $library.presentation) { presentation in
             switch presentation {
@@ -97,10 +103,17 @@ public struct MobileStickyRootView: View {
         } message: { notice in
             Text(notice.message)
         }
-        .task { await library.reload() }
+        .task {
+            let changes = StickyChanges.stream()
+            await library.reload()
+            for await _ in changes {
+                guard !Task.isCancelled else { return }
+                await library.reload()
+            }
+        }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active {
-                Task { await library.reload() }
+                Task { await library.reload(); await StickyCloudSync.shared.synchronize() }
             } else {
                 MobileBackgroundSave.flush(library)
             }

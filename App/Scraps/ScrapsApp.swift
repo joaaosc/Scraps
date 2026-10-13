@@ -4,6 +4,7 @@ import StickyDomain
 import StickyEditor
 import StickyIntents
 import StickyStorage
+import StickySync
 import StickyUI
 import SwiftUI
 
@@ -19,7 +20,9 @@ struct ScrapsApp: App {
             "globalShortcutEnabled": false,
         ])
         do {
-            StickyBoard.shared.connect(to: try FileStickyStore())
+            let store = try StickyAppStorage.makeStore()
+            StickyBoard.shared.connect(to: store)
+            StickyCloudSync.shared.connect(to: store) { await StickyBoard.shared.flushAll() }
         } catch {
             Logger(subsystem: StickyKitIdentity.bundleIdentifier, category: "App")
                 .error("Could not open the stickies folder: \(error.localizedDescription, privacy: .public)")

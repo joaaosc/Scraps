@@ -148,6 +148,13 @@ public final class StickyBoard {
         controllers[id]?.show(takingKeyboard: true)
     }
 
+    public func openStoredSticky(_ id: UUID) async -> Bool {
+        await reconcile()
+        guard let controller = controllers[id] else { return false }
+        controller.show(takingKeyboard: true)
+        return true
+    }
+
     public func showAll() {
         NSApplication.shared.activate()
         let oldestFirst = controllers.values.sorted {
@@ -242,6 +249,7 @@ public final class StickyBoard {
         closedHere.formIntersection(present)
         let plan = StickyReconciliation(stored: stored.map(\.id), present: present, open: Array(controllers.keys))
         for id in plan.toClose { controllers[id]?.closeNow() }
+        for sticky in stored { controllers[sticky.id]?.model.applyStoredSnapshot(sticky) }
         for sticky in stored where plan.toOpen.contains(sticky.id) && !closedHere.contains(sticky.id) {
             guard controllers[sticky.id] == nil else { continue }
             if sessionIDs.contains(sticky.id) {

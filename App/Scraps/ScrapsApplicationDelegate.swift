@@ -2,6 +2,7 @@ import AppKit
 import OSLog
 import StickyIntents
 import StickyStorage
+import StickySync
 import StickyUI
 
 final class ScrapsApplicationDelegate: NSObject, NSApplicationDelegate {
@@ -9,6 +10,8 @@ final class ScrapsApplicationDelegate: NSObject, NSApplicationDelegate {
     /// not earlier, once launching is over, which is when AppKit expects them.
     func applicationDidFinishLaunching(_ notification: Notification) {
         StickyBoard.shared.start()
+        StickyCloudSync.shared.start()
+        NSApplication.shared.registerForRemoteNotifications()
         ScrapsWelcome.leaveOnFirstLaunch()
         Task {
             do { try await StickyActionIndex.rebuild() }
@@ -21,6 +24,10 @@ final class ScrapsApplicationDelegate: NSObject, NSApplicationDelegate {
 
     func application(_ application: NSApplication, continue userActivity: NSUserActivity,
                      restorationHandler: @escaping ([any NSUserActivityRestoring]) -> Void) -> Bool {
+        if let id = StickyNavigation.noteID(from: userActivity) {
+            Task { await openNote(id) }
+            return true
+        }
         guard let action = StickyActionEntity.action(from: userActivity) else { return false }
         Task {
             do { try await StickyActionRouter.perform(action) }
@@ -32,6 +39,31 @@ final class ScrapsApplicationDelegate: NSObject, NSApplicationDelegate {
             }
         }
         return true
+    }
+
+    func application(_ application: NSApplication, open urls: [URL]) {
+        for url in urls {
+            guard let route = StickyNavigation(url: url) else { continue }
+            switch route {
+            case let .note(id): Task { await openNote(id) }
+            case .new: StickyBoard.shared.newSticky()
+            case .library: StickyBoard.shared.showAll()
+            }
+        }
+    }
+
+    func application(_ application: NSApplication, didReceiveRemoteNotification userInfo: [String: Any]) {
+        Task { await StickyCloudSync.shared.synchronize() }
+    }
+
+    private func openNote(_ id: UUID) async {
+        if await StickyBoard.shared.openStoredSticky(id) { return }
+        await StickyCloudSync.shared.synchronize()
+        if await StickyBoard.shared.openStoredSticky(id) { return }
+        let alert = NSAlert()
+        alert.messageText = String(localized: "This note has not reached this device yet")
+        alert.informativeText = String(localized: "Enable iCloud sync on both devices and try again.")
+        alert.runModal()
     }
 
     /// Gives pending writes two seconds to finish and keeps the app open when

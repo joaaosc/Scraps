@@ -25,6 +25,7 @@ products += [
     .library(name: "StickyUI", targets: ["StickyUI"]),
     .library(name: "StickyIntents", targets: ["StickyIntents"]),
     .library(name: "StickyMobileUI", targets: ["StickyMobileUI"]),
+    .library(name: "StickySync", targets: ["StickySync"]),
 ]
 targets += [
     .target(name: "StickyEditor", dependencies: ["StickyDomain"], resources: [.process("Resources")]),
@@ -33,7 +34,8 @@ targets += [
         "StickyDomain",
         .target(name: "StickyUI", condition: .when(platforms: [.macOS])),
     ], resources: [.process("Resources")]),
-    .target(name: "StickyMobileUI", dependencies: ["StickyDomain", "StickyStorage", "StickyEditor"], resources: [.process("Resources")]),
+    .target(name: "StickySync", dependencies: ["StickyDomain", "StickyStorage"], resources: [.process("Resources")]),
+    .target(name: "StickyMobileUI", dependencies: ["StickyDomain", "StickyStorage", "StickyEditor", "StickySync"], resources: [.process("Resources")]),
     .testTarget(name: "StickyEditorTests", dependencies: ["StickyDomain", "StickyEditor"]),
     .testTarget(name: "StickyUITests", dependencies: ["StickyDomain", "StickyStorage", "StickyUI"]),
     .testTarget(name: "StickyIntentsTests", dependencies: ["StickyDomain", "StickyIntents"]),

@@ -48,7 +48,7 @@ require("StickyActionEntity" in serialized or "StickyAction" in serialized, "Mis
 require("OpenStickyActionIntent" in serialized, "Missing action opening intent")
 require("NewStickyIntent" in serialized and "ShowStickiesIntent" in serialized, "Missing shortcut intents")
 if is_mac or args.distribution:
-    signature = subprocess.run(["codesign", "-d", "--entitlements", "-", str(bundle)], check=True, capture_output=True)
+    signature = subprocess.run(["codesign", "-d", "--entitlements", "-", "--xml", str(bundle)], check=True, capture_output=True)
     entitlements = plistlib.loads(signature.stdout)
     if is_mac:
         require(entitlements.get("com.apple.security.app-sandbox") is True, "Mac product is not sandboxed")

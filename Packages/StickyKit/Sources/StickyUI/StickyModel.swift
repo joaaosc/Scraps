@@ -41,7 +41,7 @@ public final class StickyModel {
     }
     public var richText: StickyRichText? {
         didSet {
-            guard richText != oldValue else { return }
+            guard !isApplyingStored, richText != oldValue else { return }
             base.edit(text: text, richText: richText)
             scheduleSave()
         }
@@ -103,6 +103,7 @@ public final class StickyModel {
     @ObservationIgnored private var pendingWrites = 0
     @ObservationIgnored private var isDirty = false
     @ObservationIgnored private var isDeleted = false
+    @ObservationIgnored private var isApplyingStored = false
 
     init(
         sticky: Sticky,
@@ -262,6 +263,7 @@ public final class StickyModel {
     }
 
     private func textDidChange() {
+        guard !isApplyingStored else { return }
         base.edit(text: text)
         // A plain-text replacement cannot reuse ranges from the previous text.
         richText = nil
@@ -271,7 +273,7 @@ public final class StickyModel {
     }
 
     private func scheduleSave() {
-        guard !isDeleted else { return }
+        guard !isDeleted, !isApplyingStored else { return }
         isDirty = true
         base.updatedAt = max(Date(), max(base.createdAt, base.updatedAt))
         let now = ContinuousClock.now
@@ -307,6 +309,20 @@ public final class StickyModel {
     /// save was in flight. A successful recovery write also protects the text.
     var hasUnsavedChanges: Bool {
         isClosing || (!isDeleted && (isDirty || pendingWrites > 0))
+    }
+
+    func applyStoredSnapshot(_ sticky: Sticky) {
+        guard sticky.id == id, !hasUnsavedChanges, sticky != snapshot else { return }
+        isApplyingStored = true
+        text = sticky.text
+        richText = sticky.richText
+        color = sticky.color
+        floatsOnTop = sticky.floatsOnTop
+        isCollapsed = sticky.isCollapsed
+        appearsOnAllSpaces = sticky.appearsOnAllSpaces
+        base = sticky
+        dependencies.updateTitle(title)
+        isApplyingStored = false
     }
 
     private func commit() {
