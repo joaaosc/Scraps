@@ -9,7 +9,7 @@ import StickyDomain
 public struct StickyActionEntity: IndexedEntity {
     public static let persistentIdentifier = "StickyAction"
     public static let typeDisplayRepresentation = TypeDisplayRepresentation(
-        name: LocalizedStringResource("Action", bundle: .atURL(Bundle.module.bundleURL))
+        name: "Action"
     )
     public static let defaultQuery = StickyActionQuery()
 
@@ -23,13 +23,13 @@ public struct StickyActionEntity: IndexedEntity {
     public var localizedTitle: LocalizedStringResource {
         switch action {
         case .newSticky:
-            LocalizedStringResource("New Sticky", bundle: .atURL(Bundle.module.bundleURL))
+            "New Sticky"
         case .newSessionSticky:
-            LocalizedStringResource("New Sticky (This Session Only)", bundle: .atURL(Bundle.module.bundleURL))
+            "New Sticky (This Session Only)"
         case .newStickyInColor:
-            LocalizedStringResource("New Sticky in Color…", bundle: .atURL(Bundle.module.bundleURL))
+            "New Sticky in Color…"
         case .settings:
-            LocalizedStringResource("Settings", bundle: .atURL(Bundle.module.bundleURL))
+            "Settings"
         }
     }
 

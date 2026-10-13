@@ -4,10 +4,10 @@ import Foundation
 /// Spotlight opens an indexed action using this intent. Foreground execution
 /// lets the app finish connecting its store before a sticky is created.
 public struct OpenStickyActionIntent: OpenIntent {
-    public static let title = LocalizedStringResource("Open Action", bundle: .atURL(Bundle.module.bundleURL))
+    public static let title: LocalizedStringResource = "Open Action"
     public static let supportedModes: IntentModes = [.foreground(.immediate)]
 
-    @Parameter(title: LocalizedStringResource("Action", bundle: .atURL(Bundle.module.bundleURL)))
+    @Parameter(title: "Action")
     public var target: StickyActionEntity
 
     public init() {}

@@ -3,9 +3,9 @@ import Foundation
 
 /// Brings every sticky in front of whatever is covering it.
 public struct ShowStickiesIntent: AppIntent {
-    public static let title = LocalizedStringResource("Show All Stickies", bundle: .atURL(Bundle.module.bundleURL))
+    public static let title: LocalizedStringResource = "Show All Stickies"
     public static let description = IntentDescription(
-        LocalizedStringResource("Brings every sticky to the front.", bundle: .atURL(Bundle.module.bundleURL))
+        "Brings every sticky to the front."
     )
     public static let supportedModes: IntentModes = [.foreground(.immediate)]
 
