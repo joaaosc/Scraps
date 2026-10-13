@@ -51,6 +51,7 @@ targets:
         CFBundleLocalizations: [en, pt-BR]
         ITSAppUsesNonExemptEncryption: false
         NSUserActivityTypes: [com.joaocosta.Scraps.edit]
+        ScrapsCloudEnvironment: $(ICLOUD_ENVIRONMENT)
         CFBundleURLTypes:
           - CFBundleURLName: com.joaocosta.Scraps
             CFBundleURLSchemes: [scraps]
@@ -100,6 +101,7 @@ targets:
         CFBundleLocalizations: [en, pt-BR]
         ITSAppUsesNonExemptEncryption: false
         NSUserActivityTypes: [com.joaocosta.Scraps.edit]
+        ScrapsCloudEnvironment: $(ICLOUD_ENVIRONMENT)
         CFBundleURLTypes:
           - CFBundleURLName: com.joaocosta.Scraps
             CFBundleURLSchemes: [scraps]

@@ -44,5 +44,7 @@
 	<array>
 		<string>com.joaocosta.Scraps.edit</string>
 	</array>
+	<key>ScrapsCloudEnvironment</key>
+	<string>$(ICLOUD_ENVIRONMENT)</string>
 </dict>
 </plist>

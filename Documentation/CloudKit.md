@@ -42,7 +42,8 @@ Não criar índices para texto, título, etiquetas ou payload. O nome do registr
 é o UUID da nota; não contém o título. Após criar e testar o esquema no ambiente
 Development, usar **Deploy Schema Changes** no CloudKit Console antes de
 TestFlight ou distribuição. Release usa Production; Debug usa Development.
-Os conteúdos dos dois ambientes são independentes.
+Os conteúdos e os metadados de sincronização dos dois ambientes são independentes.
+Notas locais continuam disponíveis ao trocar de configuração.
 
 O CI compila CloudKit e verifica entitlements, mas não pode provisionar a equipe,
 publicar esse esquema ou provar uma sincronização com a conta do proprietário.

@@ -104,3 +104,7 @@ O editor conserva a última versão efetivamente salva e exige que ela ainda cor
 ### Leituras antigas e recuperação
 
 A recuperação atualiza a versão de referência antes de permitir outra edição. No Mac, uma leitura iniciada antes de um salvamento confirmado não pode substituir o texto atual nem fechar sua janela. A biblioteca recebe a prévia após a reconciliação, sem manter um título antigo. Acrescentadas regressões de recuperação e leitura concorrente.
+
+### Separação dos ambientes iCloud
+
+Development e Production usam arquivos de estado separados para não reutilizar tokens e confirmações entre bases distintas. A mudança conserva os documentos locais e qualquer estado anterior; ao iniciar o ambiente novo, as notas locais entram na sincronização. O ambiente efetivo também consta do Info.plist dos apps.

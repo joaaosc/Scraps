@@ -42,6 +42,8 @@
 	<array>
 		<string>com.joaocosta.Scraps.edit</string>
 	</array>
+	<key>ScrapsCloudEnvironment</key>
+	<string>$(ICLOUD_ENVIRONMENT)</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

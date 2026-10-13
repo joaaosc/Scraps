@@ -31,7 +31,14 @@ actor StickySyncService: CKSyncEngineDelegate {
         self.store = store
         self.beforeImport = beforeImport
         self.report = report
-        self.stateURL = store.directoryURL.deletingLastPathComponent().appending(path: "Sync/state.json")
+        #if DEBUG
+        let fallbackEnvironment = "Development"
+        #else
+        let fallbackEnvironment = "Production"
+        #endif
+        let environment = Bundle.main.object(forInfoDictionaryKey: "ScrapsCloudEnvironment") as? String ?? fallbackEnvironment
+        let namespace = environment == "Production" ? "Production" : "Development"
+        self.stateURL = store.directoryURL.deletingLastPathComponent().appending(path: "Sync/\(namespace)/state.json")
         self.persisted = (try? JSONDecoder().decode(StickySyncState.self, from: Data(contentsOf: stateURL))) ?? StickySyncState()
     }
 
