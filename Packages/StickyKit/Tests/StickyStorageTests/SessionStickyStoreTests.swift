@@ -125,7 +125,7 @@ struct SessionStickyStoreTests {
         await durable.waitForSave()
         var edited = original
         edited.edit(text: "Latest café 👩🏽‍💻", at: instant.addingTimeInterval(1))
-        let edit = Task { try await store.save(edited) }
+        let edit = Task { [edited] in try await store.save(edited) }
         try await Task.sleep(for: .milliseconds(10))
         await durable.releaseSave()
         try await conversion.value
