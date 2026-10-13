@@ -1,4 +1,5 @@
 import Foundation
+import StickyDomain
 
 public enum StickyNavigation: Equatable, Sendable {
     case note(UUID)
