@@ -68,7 +68,7 @@ interação e de dispositivo abaixo são manuais.
 
 ## Atualização e salvamento no Mac
 
-- [ ] A nova instalação mostra **1.0.0 (3)** no Terminal e abre a cópia em
+- [ ] A nova instalação mostra **1.0.0 (4)** no Terminal e abre a cópia em
   `/Applications`. Os dados existentes reaparecem.
 - [ ] Editar e sair imediatamente mantém a última edição ao abrir novamente.
 - [ ] Fechar uma nota editada e sair imediatamente mantém o conteúdo na
@@ -81,3 +81,45 @@ Na equipe configurada, executar `Scripts/archive.sh macOS` e
 `Scripts/archive.sh iOS`; validar pelo Organizer do Xcode antes do envio.
 Conferir as URLs de suporte/privacidade e os textos em
 [AppStore.md](AppStore.md).
+
+## Novos recursos nas duas plataformas
+
+- [ ] Favoritar uma nota a coloca no início e na coleção Favoritos.
+- [ ] Etiquetas com acentos e japonês são preservadas e localizadas pela busca.
+- [ ] Arquivar tira a nota da coleção principal e, no Mac, fecha a janela.
+  Desarquivar preserva texto e formatação. No Mac, abrir biblioteca com ⌘0.
+- [ ] Duplicar um rascunho mantém texto, formatação, cor e etiquetas; duplicar
+  uma nota de sessão continua sendo uma operação apenas em memória.
+- [ ] Selecionar trechos, aplicar título/código, sublinhado, tachado, destaque
+  e link; reabrir e compartilhar em RTF. Conferir desfazer/refazer nativo.
+- [ ] A animação Metal termina rapidamente, não afeta digitação/seleção e
+  desaparece com Reduzir Movimento, Reduzir Transparência e contraste aumentado.
+- [ ] Abrir o app uma vez, adicionar os widgets de nota e captura rápida na
+  Mesa do Mac e Tela de Início do iOS. Escolher uma nota nos ajustes do widget.
+- [ ] Marcar uma tarefa pelo widget atualiza o app. Uma tarefa cujo texto mudou
+  depois da renderização não altera uma linha diferente. Notas de sessão e
+  arquivadas não aparecem na seleção; remover uma nota não revela outra.
+- [ ] Conferir tamanho pequeno/médio/grande, texto aumentado e opções do sistema
+  para ocultar conteúdo sensível. Widgets podem exibir texto a quem olha a tela.
+
+## iCloud e continuidade — dispositivos reais
+
+Preparar perfis e esquema conforme [CloudKit.md](CloudKit.md). Usar a mesma conta
+Apple, Bluetooth/Wi-Fi e Handoff habilitados. Builds Debug sincronizam entre si;
+builds Release/TestFlight usam outro ambiente de dados.
+
+- [ ] Ativar Usar iCloud nos dois dispositivos. Criar e editar no Mac e conferir
+  iPhone/iPad; repetir na direção contrária, incluindo formatação e etiquetas.
+- [ ] Testar offline, reconectar e usar Sincronizar agora. Nenhum texto se perde.
+- [ ] Editar texto da mesma nota offline nos dois dispositivos e reconectar:
+  conferir a edição principal e a cópia Edição recuperada.
+- [ ] Alterar texto em um dispositivo e cor/favorito no outro: conferir combinação.
+- [ ] Excluir, recuperar e remover definitivamente; conferir o outro dispositivo.
+- [ ] Digitar enquanto um widget altera uma tarefa: o rascunho deve permanecer
+  disponível, inclusive como cópia recuperada quando houver conflito.
+- [ ] Continuar uma nota usando Handoff entre Mac e iPhone. Caso ela ainda não
+  tenha sincronizado, aparece uma mensagem, sem criar uma nota em branco.
+- [ ] Sair/trocar conta Apple pausa sync e preserva arquivos locais. Reativar na
+  nova conta exige intenção explícita nos ajustes; não apaga notas antigas.
+- [ ] Desativar sincronização mantém notas locais e cópias já presentes no iCloud.
+- [ ] Notas de sessão não aparecem no outro dispositivo nem nos widgets.

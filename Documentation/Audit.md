@@ -1,4 +1,4 @@
-# Auditoria da versão 1.0.0 (3)
+# Auditoria da versão 1.0.0 (4)
 
 ## Erros corrigidos
 
@@ -39,8 +39,8 @@ incluindo escrita da direita para a esquerda. A interface ainda não inclui
 traduções para árabe ou hebraico. Datas exibidas usam o formato do sistema;
 datas armazenadas não dependem de idioma, calendário ou fuso horário.
 
-O conteúdo permanece no armazenamento local de cada dispositivo, sem
-sincronização entre Mac e iOS. Nenhum texto de nota entra no Spotlight. Os
+O conteúdo permanece local e pode ser sincronizado, se habilitado, pela base
+privada do CloudKit. Conflitos de texto preservam cópias recuperadas. Nenhum texto de nota entra no Spotlight. Os
 backups configurados no sistema podem incluir notas persistentes.
 
 O suporte mínimo é macOS/iOS/iPadOS 27, com Apple silicon no Mac. Conferências
@@ -48,3 +48,22 @@ de interação, VoiceOver, tamanhos de texto, idiomas e layout RTL ficam para
 execução manual conforme [Validation.md](Validation.md). A publicação na loja
 exige os certificados e perfis da equipe, informações comerciais aplicáveis,
 URLs públicas e screenshots reais conforme [AppStore.md](AppStore.md).
+
+## Ampliação auditada
+
+- Migração para grupos copia arquivos sem apagar os originais ou sobrescrever
+  documentos já existentes; arquivos ilegíveis continuam preservados.
+- Importações do iCloud e ações de widgets comparam a versão lida antes de
+  escrever. Uma edição local posterior impede a substituição.
+- Notificações silenciosas no iOS têm resposta limitada a 20 segundos.
+- Notas de sessão permanecem fora do disco, iCloud e widgets; duplicação conserva
+  essa propriedade. Arquivo e favoritos não confundem o nível flutuante da janela.
+- Campo rich text aditivo preserva a leitura dos documentos v3 anteriores;
+  estilos desconhecidos caem no corpo e links de arquivos locais são rejeitados.
+- Widgets usam AppEntity sem indexação de conteúdo; os quatro comandos fixos
+  continuam sendo o único conjunto doado ao Spotlight.
+- O shader só afeta a borda; não filtra o TextEditor. Compilação Metal é verificada
+  antes dos builds, e o efeito para ao terminar ou ao entrar em segundo plano.
+
+A comprovação de compilação e assinatura está no CI da revisão correspondente;
+a comprovação do uso continua pendente das conferências manuais.

@@ -60,3 +60,7 @@ Biblioteca nativa com três colunas, busca, favoritos, etiquetas, arquivo, prév
 ### Limites da sincronização em segundo plano
 
 A notificação silenciosa no iOS responde em até 20 segundos, dentro do limite do sistema, sem abandonar o estado do motor de sincronização. Arquivos temporários de anexos grandes são removidos depois da confirmação de envio. A validação real de contas, rede e notificações continua no roteiro manual.
+
+### Preparação internacional e documentação
+
+Atualizados os textos em inglês/português e os roteiros de publicação, privacidade, widgets, animação, organização e continuidade. Documentados os grupos, contêiner, esquema privado, campos cifrados e separação Development/Production do CloudKit. A distribuição continua dependente de perfis, esquema em produção, URLs públicas e capturas reais do proprietário.

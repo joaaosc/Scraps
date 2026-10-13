@@ -16,12 +16,15 @@ Anote uma ideia, uma lista ou um lembrete sem interromper o que está fazendo.
 No Mac, cada nota tem sua própria janela: escolha uma cor, mantenha na frente,
 recolha à primeira linha e deixe visível em todas as Mesas.
 
-Escreva com negrito, itálico, listas e caixas de marcar. Crie notas que duram
+Escreva com estilos, negrito, itálico, destaque, links, listas e caixas de marcar.
+Organize com favoritos, etiquetas e arquivo. Crie notas que duram
 apenas uma sessão, recupere notas fechadas por 30 dias e compartilhe o que
 merece ficar no Notas da Apple.
 
 No iPhone e no iPad, encontre suas notas numa biblioteca adaptável. As notas
-ficam no dispositivo, sem conta, publicidade ou rastreamento.
+ficam no dispositivo ou, se você ativar, sincronizam pela sua conta iCloud.
+Widgets mantêm ideias e tarefas à vista. Handoff continua a edição entre seus
+dispositivos, sem publicidade ou rastreamento.
 
 Palavras-chave: notas,adesivas,lembretes,rascunho,listas,tarefas,stickies
 
@@ -33,11 +36,14 @@ Capture a thought, a list, or a little reminder without losing your place.
 On Mac, every sticky has its own window. Choose a color, float it above other
 apps, collapse it to its first line, or keep it visible across desktops.
 
-Use bold, italic, lists, and checklists. Make a session-only note, recover
+Use text styles, bold, italic, highlights, links, lists and checklists.
+Organize with favorites, tags and an archive. Make a session-only note, recover
 closed notes for 30 days, and share anything worth keeping with Apple Notes.
 
 On iPhone and iPad, browse an adaptable note library. Your notes stay on your
-device, with no accounts, advertising, or tracking.
+device, or optionally sync through your private iCloud account. Native widgets
+keep ideas and tasks in sight, and Handoff continues editing on your devices.
+There is no advertising or tracking.
 
 Keywords: sticky,notes,reminders,scratchpad,lists,tasks,stickies
 
@@ -50,13 +56,16 @@ Keywords: sticky,notes,reminders,scratchpad,lists,tasks,stickies
    A primeira ação deve ser Nova nota; a ordem final depende do Spotlight.
 4. Arquivar com certificado Apple Distribution: `Scripts/archive.sh macOS`
    e `Scripts/archive.sh iOS`. A equipe precisa de certificado e perfil de
-   distribuição válidos.
+   distribuição válidos para os apps e extensões, incluindo as capacidades
+   descritas em [CloudKit.md](CloudKit.md). Publicar o esquema CloudKit em
+   Production antes de TestFlight.
 5. Validar o arquivo no Organizer do Xcode; conferir assinatura e entitlements.
    O produto macOS deve ter sandbox e não pode incluir get-task-allow.
 6. Cadastrar URLs públicas de suporte e privacidade, confirmar o nome e preparar
    screenshots reais das duas plataformas. Este repositório não publica URLs.
-7. No formulário de privacidade, declarar que o app não coleta dados. Conferir
-   novamente caso um serviço externo seja adicionado.
+7. No formulário de privacidade, aplicar as definições atuais da Apple ao
+   conteúdo privado do CloudKit. O desenvolvedor não recebe telemetria nem
+   acessa o conteúdo, mas a sincronização deve constar da política pública.
 
 ## Disponibilidade internacional
 
@@ -67,7 +76,7 @@ outros territórios recebem o idioma de fallback disponível. Os limites são
 
 Usar o mesmo registro do app para Mac, iPhone e iPad, com o bundle identifier
 `com.joaocosta.Scraps`, se a distribuição incluir compra universal. Isso não
-ativa sincronização entre dispositivos. O requisito macOS/iOS/iPadOS 27 deve
+ativa sincronização por si só: o contêiner CloudKit também precisa estar configurado. O requisito macOS/iOS/iPadOS 27 deve
 aparecer na listagem; o app Mac é destinado a Apple silicon.
 
 Antes de habilitar territórios, definir no App Store Connect os países de
