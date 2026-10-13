@@ -68,3 +68,7 @@ Atualizados os textos em inglês/português e os roteiros de publicação, priva
 ### Identidade e verificação dos produtos
 
 Nomes dos produtos explícitos para manter os esquemas e a incorporação de widgets coerentes com os executáveis reais. Verificação inclui extensões, idiomas, privacidade, versão, biblioteca Metal e capacidades efetivamente assinadas de grupos, CloudKit e notificações. Instalação e arquivo permitem atualizar perfis pela conta do Xcode.
+
+### Integração dos widgets no SDK 27
+
+Os testes nativos do pacote passaram. Corrigida a importação explícita exigida pelos botões interativos dos widgets. O shader recebe uma cópia do estado de ativação, evitando acesso ao estado da interface por uma closure concorrente. Builds completos em validação.

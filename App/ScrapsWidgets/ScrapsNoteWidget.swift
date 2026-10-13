@@ -1,3 +1,4 @@
+import AppIntents
 import StickyDomain
 import StickyEditor
 import StickyStorage

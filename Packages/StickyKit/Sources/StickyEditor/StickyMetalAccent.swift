@@ -20,13 +20,14 @@ public struct StickyMetalAccent: View {
     }
     public var body: some View {
         TimelineView(.animation(minimumInterval: 1.0 / 30, paused: !active)) { context in
+            let enabled = active && Self.hasMetal
             let progress = min(1, max(0, context.date.timeIntervalSince(started) / 0.85))
             RoundedRectangle(cornerRadius: 16)
                 .strokeBorder(tint.opacity(0.55), lineWidth: 2)
                 .visualEffect { content, geometry in
                     content.colorEffect(ShaderLibrary.bundle(.module).scrapsRim(
                         .float(Float(progress)), .float2(Float(geometry.size.width), Float(geometry.size.height))
-                    ), isEnabled: active && Self.hasMetal)
+                    ), isEnabled: enabled)
                 }
                 .opacity(active ? 1 : 0)
         }
