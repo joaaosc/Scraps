@@ -21,6 +21,10 @@ public struct Sticky: Codable, Equatable, Identifiable, Sendable {
     public var deletedAt: Date?
     /// Portable emphasis runs, measured in UTF-16 offsets into `text`.
     public var richText: StickyRichText?
+    public var isPinned: Bool
+    public var isArchived: Bool
+    public var tags: [String]
+    public var conflictSourceID: UUID?
 
     public init(
         id: UUID = UUID(),
@@ -33,7 +37,11 @@ public struct Sticky: Codable, Equatable, Identifiable, Sendable {
         isCollapsed: Bool = false,
         appearsOnAllSpaces: Bool = false,
         deletedAt: Date? = nil,
-        richText: StickyRichText? = nil
+        richText: StickyRichText? = nil,
+        isPinned: Bool = false,
+        isArchived: Bool = false,
+        tags: [String] = [],
+        conflictSourceID: UUID? = nil
     ) {
         self.id = id
         self.text = text
@@ -46,6 +54,10 @@ public struct Sticky: Codable, Equatable, Identifiable, Sendable {
         self.appearsOnAllSpaces = appearsOnAllSpaces
         self.deletedAt = deletedAt
         self.richText = richText?.normalized(for: text)
+        self.isPinned = isPinned
+        self.isArchived = isArchived
+        self.tags = Self.normalizedTags(tags)
+        self.conflictSourceID = conflictSourceID
     }
 
     /// Replaces the text and moves `updatedAt` forward. `createdAt` never moves.
@@ -86,6 +98,7 @@ public struct Sticky: Codable, Equatable, Identifiable, Sendable {
     private enum CodingKeys: String, CodingKey {
         case id, text, createdAt, updatedAt, frame, floatsOnTop
         case color, isCollapsed, appearsOnAllSpaces, deletedAt, richText
+        case isPinned, isArchived, tags, conflictSourceID
     }
 
     /// Version-one notes predate color, formatting, collapse, Spaces and trash.
@@ -104,5 +117,27 @@ public struct Sticky: Codable, Equatable, Identifiable, Sendable {
         deletedAt = try values.decodeIfPresent(Date.self, forKey: .deletedAt)
         richText = try values.decodeIfPresent(StickyRichText.self, forKey: .richText)?
             .normalized(for: text)
+        isPinned = try values.decodeIfPresent(Bool.self, forKey: .isPinned) ?? false
+        isArchived = try values.decodeIfPresent(Bool.self, forKey: .isArchived) ?? false
+        tags = Self.normalizedTags(try values.decodeIfPresent([String].self, forKey: .tags) ?? [])
+        conflictSourceID = try values.decodeIfPresent(UUID.self, forKey: .conflictSourceID)
+    }
+
+    public static func normalizedTags(_ tags: [String]) -> [String] {
+        var seen = Set<String>()
+        return tags.compactMap { value in
+            let tag = value.trimmingCharacters(in: .whitespacesAndNewlines).trimmingCharacters(in: CharacterSet(charactersIn: "#"))
+            let key = tag.folding(options: [.caseInsensitive, .diacriticInsensitive], locale: Locale(identifier: "en_US_POSIX"))
+            guard !tag.isEmpty, seen.insert(key).inserted else { return nil }
+            return tag
+        }
+    }
+
+    public func duplicated(id: UUID = UUID(), at date: Date = Date()) -> Sticky {
+        var copy = Sticky(id: id, text: text, createdAt: date, floatsOnTop: floatsOnTop, color: color,
+                          appearsOnAllSpaces: appearsOnAllSpaces, richText: richText,
+                          isPinned: isPinned, tags: tags)
+        copy.frame = nil
+        return copy
     }
 }

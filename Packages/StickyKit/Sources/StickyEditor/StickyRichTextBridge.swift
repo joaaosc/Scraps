@@ -13,14 +13,19 @@ import UIKit
 public enum StickyRichTextBridge {
     public static func attributedText(text: String, richText: StickyRichText?) -> AttributedString {
         var result = AttributedString(text)
-        for run in richText?.normalized(for: text).runs ?? [] {
-            // UTF-16 runs may end between the scalars of a composed character
-            // or emoji. String's grapheme-aware Range initializer drops those
-            // valid attributed-text boundaries.
-            let start = String.Index(utf16Offset: run.location, in: text)
-            let end = String.Index(utf16Offset: run.location + run.length, in: text)
-            guard let lower = AttributedString.Index(start, within: result),
-                  let upper = AttributedString.Index(end, within: result) else { continue }
+        let runs = richText?.normalized(for: text).runs ?? []
+        let boundaries = Set(runs.flatMap { [$0.location, $0.location + $0.length] })
+        var positions: [Int: AttributedString.Index] = [:]
+        var offset = 0
+        for index in result.unicodeScalars.indices {
+            if boundaries.contains(offset) { positions[offset] = index }
+            offset += result.unicodeScalars[index].value > 0xFFFF ? 2 : 1
+        }
+        positions[offset] = result.endIndex
+        for run in runs {
+            // Use the attributed string's scalar indices directly: converting
+            // String.Index still rejects positions inside composed characters.
+            guard let lower = positions[run.location], let upper = positions[run.location + run.length] else { continue }
             result[lower..<upper].font = canonicalFont(bold: run.bold, italic: run.italic)
         }
         return result

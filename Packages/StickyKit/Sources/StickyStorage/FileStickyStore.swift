@@ -174,6 +174,23 @@ public actor FileStickyStore: RecentlyDeletedStickyStore {
             }
     }
 
+    /// Includes recoverable notes for CloudKit. Session notes never enter this store.
+    public func synchronizationSnapshot() throws -> [Sticky] {
+        try Self.readAll(in: directoryURL)
+    }
+
+    /// A remote merge is committed only if the locally read version is still
+    /// current. It can restore a tombstone, which ordinary autosaves cannot do.
+    public func applySynchronized(_ sticky: Sticky, replacing expected: Sticky?) throws {
+        let file = Self.fileURL(for: sticky.id, in: directoryURL)
+        try Self.coordinatedWrite(at: file) { target in
+            let current = FileManager.default.fileExists(atPath: target.path) ? try Self.readDocument(at: target) : nil
+            guard current == expected else { throw FileStickyStoreError.newerEditExists(sticky.id) }
+            try Self.encode(sticky).write(to: target, options: .atomic)
+        }
+        announce()
+    }
+
     /// A tombstone lives in the same atomic document as its contents. There is
     /// no remove-then-write interval in which a failure could lose the note.
     public func moveToTrash(_ sticky: Sticky, at date: Date) throws {
