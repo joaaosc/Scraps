@@ -36,3 +36,7 @@ Borda animada por shader Metal ao criar uma nota ou trocar sua cor. O editor nat
 ### Widgets nativos
 
 Extensões WidgetKit para Mac, iPhone e iPad com nota configurável e captura rápida. Caixas de marcar são interativas e recusam alterações quando o texto mudou desde a renderização. Notas de sessão e arquivadas ficam fora dos widgets; atualizações usam o armazenamento compartilhado e o conteúdo é marcado como sensível. O aplicativo precisa ser aberto uma vez antes de adicionar widgets. Compilação e assinatura das extensões em validação.
+
+### Diagnóstico da compilação Metal
+
+O CI passa a verificar o compilador e compilar o shader isoladamente antes do pacote, para tornar visíveis erros que o executor do pacote omite. Ainda não há confirmação de build da ampliação.

@@ -21,6 +21,10 @@ jobs:
           xcodebuild -version
           xcrun --sdk macosx --show-sdk-version
           xcrun --sdk iphonesimulator --show-sdk-version
+      - name: Verify Metal compiler
+        run: |
+          xcrun metal --version
+          xcrun --sdk macosx metal -c Packages/StickyKit/Sources/StickyEditor/Shaders/StickyEffects.metal -o /tmp/ScrapsEffects.air
       - name: Generate project
         run: |
           if ! command -v xcodegen >/dev/null; then brew install xcodegen; fi
