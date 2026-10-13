@@ -314,6 +314,7 @@ public final class StickyBoard {
     }
 
     private func reconcile() async {
+        let revisions = controllers.mapValues { $0.model.storageRevision }
         let session = await sessionStore.stickies()
         var stored = session
         var present = Set(session.map(\.id))
@@ -335,13 +336,13 @@ public final class StickyBoard {
             $0.createdAt == $1.createdAt ? $0.id.uuidString < $1.id.uuidString : $0.createdAt < $1.createdAt
         }
         closedHere.formIntersection(present)
-        libraryStickies = stored.map { controllers[$0.id]?.model.snapshot ?? $0 }
         present.subtract(stored.filter(\.isArchived).map(\.id))
         let visible = stored.filter { !$0.isArchived }
         let plan = StickyReconciliation(stored: visible.map(\.id), present: present, open: Array(controllers.keys))
         for id in plan.toClose {
             // An external change must never close an editor with an unsaved draft.
-            guard let controller = controllers[id], !controller.model.isClosing else { continue }
+            guard let controller = controllers[id], !controller.model.isClosing,
+                  revisions[id] == controller.model.storageRevision else { continue }
             if controller.model.hasUnsavedChanges {
                 // An archive written by this editor announces its change before
                 // its save task drains. Its explicit operation reconciles again.
@@ -349,7 +350,10 @@ public final class StickyBoard {
                 recoverDraft(id)
             } else { controller.closeNow() }
         }
-        for sticky in stored { controllers[sticky.id]?.model.applyStoredSnapshot(sticky) }
+        for sticky in stored {
+            guard let revision = revisions[sticky.id] else { continue }
+            controllers[sticky.id]?.model.applyStoredSnapshot(sticky, expectedRevision: revision)
+        }
         for sticky in visible where plan.toOpen.contains(sticky.id) && !closedHere.contains(sticky.id) {
             guard controllers[sticky.id] == nil else { continue }
             if sessionIDs.contains(sticky.id) {
@@ -358,6 +362,7 @@ public final class StickyBoard {
                 open(sticky, store: store, sessionOnly: false)
             }
         }
+        libraryStickies = stored.map { controllers[$0.id]?.model.snapshot ?? $0 }
         updateOpenStickies()
         await refreshRecentlyDeleted()
     }

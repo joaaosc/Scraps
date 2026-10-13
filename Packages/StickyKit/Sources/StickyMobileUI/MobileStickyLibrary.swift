@@ -263,6 +263,7 @@ public final class MobileStickyLibrary {
                     self.stickies.removeAll { $0.id == id }
                     self.stickies.append(sticky)
                     self.saveStates[id] = .saved
+                    self.savedSnapshots[id] = sticky
                     if await store.isSessionOnly(id: id) { self.sessionIdentifiers.insert(id) }
                     self.sortStickies()
                 }

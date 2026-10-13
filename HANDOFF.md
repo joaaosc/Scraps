@@ -100,3 +100,7 @@ O workflow acompanha somente main e não recompila produtos quando um commit alt
 ### Proteção do editor contra alterações de widgets
 
 O editor conserva a última versão efetivamente salva e exige que ela ainda corresponda ao arquivo antes de substituir o documento. A comparação protege também quando a data do rascunho é posterior à alteração externa. No iOS, o rascunho vira uma cópia recuperada; no Mac, permanece aberto com a ação Guardar edição como cópia. Acrescentada regressão dessa condição sem iniciar janelas.
+
+### Leituras antigas e recuperação
+
+A recuperação atualiza a versão de referência antes de permitir outra edição. No Mac, uma leitura iniciada antes de um salvamento confirmado não pode substituir o texto atual nem fechar sua janela. A biblioteca recebe a prévia após a reconciliação, sem manter um título antigo. Acrescentadas regressões de recuperação e leitura concorrente.

@@ -361,6 +361,20 @@ struct StickyModelTests {
         if case .failure = model.status {} else { Issue.record("The concurrent edit should remain recoverable") }
     }
 
+    @Test("A store read started before a save cannot replace the acknowledged text")
+    func staleReadKeepsSavedText() async {
+        let spy = Spy()
+        let model = makeModel(text: "Original", spy: spy, autosave: .seconds(60))
+        let oldRead = model.snapshot
+        let revision = model.storageRevision
+        model.text = "Acknowledged edit"
+        await model.flush().value
+        model.applyStoredSnapshot(oldRead, expectedRevision: revision)
+        #expect(model.text == "Acknowledged edit")
+        #expect(!model.hasUnsavedChanges)
+        #expect(spy.saved.last?.text == "Acknowledged edit")
+    }
+
     /// Records what the model asked of the outside world.
     @MainActor
     final class Spy {

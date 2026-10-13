@@ -96,6 +96,7 @@ public final class StickyModel {
     public let isSessionOnly: Bool
 
     @ObservationIgnored public var sendButtonFrame: CGRect = .zero
+    @ObservationIgnored private(set) var storageRevision: UInt64 = 0
     @ObservationIgnored private var savedSnapshot: Sticky
     @ObservationIgnored private var base: Sticky
     @ObservationIgnored private let dependencies: Dependencies
@@ -356,9 +357,11 @@ public final class StickyModel {
         isClosing || (!isDeleted && (isDirty || pendingWrites > 0))
     }
 
-    func applyStoredSnapshot(_ sticky: Sticky) {
+    func applyStoredSnapshot(_ sticky: Sticky, expectedRevision: UInt64? = nil) {
+        if let expectedRevision, expectedRevision != storageRevision { return }
         guard sticky.id == id, !hasUnsavedChanges, sticky != snapshot else { return }
         isApplyingStored = true
+        storageRevision &+= 1
         savedSnapshot = sticky
         text = sticky.text
         richText = sticky.richText
@@ -392,6 +395,7 @@ public final class StickyModel {
                     try await saveCompared(sticky, savedSnapshot)
                 } else { try await save(sticky) }
                 savedSnapshot = sticky
+                storageRevision &+= 1
                 saveDidSucceed()
             } catch {
                 saveDidFail(error)

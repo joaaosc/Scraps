@@ -7,6 +7,25 @@ import Testing
 @Suite("Mobile sticky library")
 @MainActor
 struct MobileStickyLibraryTests {
+    @Test("Editing a recovered file uses the restored version even when trash retained a newer edit")
+    func editingRecoveredFile() async throws {
+        let folder = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let files = try FileStickyStore(directoryURL: folder)
+        let library = MobileStickyLibrary(store: SessionStickyStore(durable: files))
+        let original = try #require(await library.newSticky(text: "Original"))
+        var external = original
+        external.edit(text: "Newer retained text", at: Date().addingTimeInterval(60))
+        try await files.save(external)
+        #expect(await library.moveToTrash(id: original.id))
+        await library.restore(id: original.id)
+        library.edit(id: original.id, text: "Edited after recovery", richText: nil)
+        await library.flush()
+        let saved = try await files.stickies()
+        #expect(saved.count == 1 && saved.first?.id == original.id)
+        #expect(saved.first?.text == "Edited after recovery")
+    }
+
     @Test("Organizing a pending edit preserves its text and persists every metadata field")
     func organizeDraft() async throws {
         let durable = MemoryStickyStore()
