@@ -17,6 +17,12 @@ case "$PLATFORM" in
         ;;
     *) echo "Usage: Scripts/archive.sh [macOS|iOS]" >&2; exit 2 ;;
 esac
+# Xcode installs the GPU compiler as an optional component.
+if ! xcrun metal --version >/dev/null 2>&1; then
+    echo "==> Installing the Metal Toolchain"
+    xcodebuild -downloadComponent metalToolchain
+fi
+
 xcodegen generate
 xcodebuild -project Scraps.xcodeproj -scheme "$SCHEME" -configuration Release \
     -destination "$DESTINATION" -derivedDataPath build.noindex/DerivedData \

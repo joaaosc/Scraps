@@ -62,6 +62,12 @@ if [ "project.yml" -nt "Scraps.xcodeproj/project.pbxproj" ]; then
     xcodegen generate --quiet
 fi
 
+# Xcode installs the GPU compiler as an optional component.
+if ! xcrun metal --version >/dev/null 2>&1; then
+    echo "==> Installing the Metal Toolchain"
+    xcodebuild -downloadComponent metalToolchain
+fi
+
 echo "==> Building Scraps ($CONFIGURATION)"
 xcodebuild -project Scraps.xcodeproj \
     -scheme Scraps \

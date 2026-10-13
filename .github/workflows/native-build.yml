@@ -1,7 +1,12 @@
 name: Native builds
 on:
   push:
-    branches: [main, "feature/**"]
+    branches: [main]
+    paths-ignore:
+      - "Documentation/**"
+      - "HANDOFF.md"
+      - "README.md"
+      - "LICENSE"
   workflow_dispatch:
 permissions:
   contents: read
@@ -23,7 +28,7 @@ jobs:
           xcrun --sdk iphonesimulator --show-sdk-version
       - name: Verify Metal compiler
         run: |
-          if ! xcrun metal --version; then xcodebuild -downloadComponent metalToolchain; fi
+          if ! xcrun metal --version >/dev/null 2>&1; then xcodebuild -downloadComponent metalToolchain; fi
           xcrun metal --version
           xcrun --sdk macosx metal -c Packages/StickyKit/Sources/StickyEditor/Shaders/StickyEffects.metal -o /tmp/ScrapsEffects.air
       - name: Generate project

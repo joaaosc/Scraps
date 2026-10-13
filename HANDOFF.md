@@ -92,3 +92,7 @@ Uma notificação do próprio salvamento de arquivo não cria uma cópia recuper
 ### Versão para conferência final
 
 Preparada a versão 1.0.0 (5) para distinguir a ampliação nas instalações locais. Alternar rapidamente a sincronização não permite que uma operação de desligamento antiga substitua o estado atual dos ajustes. A revisão anterior passou nos 162 testes nativos, nos builds Mac/iOS, na verificação dos produtos e nos arquivos Release; falta concluir o CI desta revisão final.
+
+### Build contínuo na main
+
+O workflow acompanha somente main e não recompila produtos quando um commit altera apenas documentação. Os scripts locais instalam Metal Toolchain quando o componente estiver ausente. A versão 1.0.0 (5) segue para a conferência nativa final.
