@@ -46,8 +46,6 @@ jobs:
           xcodebuild -project Scraps.xcodeproj -scheme ScrapsMobile -configuration Debug \
             -destination 'generic/platform=iOS Simulator' -derivedDataPath build.noindex/DerivedData \
             build CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=''
-      - name: Native launch preview
-        run: Scripts/native-preview.sh
       - name: Release archives
         run: |
           xcodebuild -project Scraps.xcodeproj -scheme Scraps -configuration Release \
@@ -68,10 +66,6 @@ jobs:
         with:
           name: Scraps-macOS-development
           path: build.noindex/Scraps-macOS.zip
-      - uses: actions/upload-artifact@v4
-        with:
-          name: Scraps-native-preview
-          path: build.noindex/Preview
       - uses: actions/upload-artifact@v4
         with:
           name: Scraps-release

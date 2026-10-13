@@ -53,6 +53,7 @@ A instalação registra a cópia em `/Applications` usada pelo Spotlight. O
 arquivamento exige certificados Apple Distribution e perfis da equipe.
 
 Consulte [preparação para a loja](Documentation/AppStore.md),
+[conferência manual](Documentation/Validation.md),
 [privacidade](Documentation/Privacy.md) e [licença](LICENSE).
 
 ## Estrutura
