@@ -22,7 +22,13 @@ struct ScrapsCommands: Commands {
             Divider()
             Button("Recently Deleted…") { ScrapsUtilityWindows.shared.showRecentlyDeleted() }
         }
-        CommandGroup(replacing: .saveItem) {}
+        CommandGroup(replacing: .saveItem) {
+            Button("Close") { NSApplication.shared.keyWindow?.performClose(nil) }
+                .keyboardShortcut("w")
+            Button("Close All Stickies", action: board.closeAll)
+                .keyboardShortcut("w", modifiers: [.command, .option])
+                .disabled(!board.hasOpenStickies)
+        }
         CommandGroup(replacing: .windowSize) {
             Button(board.activeModel?.isCollapsed == true ? String(localized: "Expand Sticky") : String(localized: "Collapse Sticky"), action: board.toggleActiveCollapse)
                 .keyboardShortcut("m").disabled(board.activeModel == nil)
@@ -45,10 +51,6 @@ struct ScrapsCommands: Commands {
                 Button("Copy Text", action: board.copyActiveText).disabled(board.activeModel?.text.isEmpty != false)
             }
             .disabled(board.activeModel == nil)
-            Divider()
-            Button("Close All Stickies", action: board.closeAll)
-                .disabled(!board.hasOpenStickies)
-                .keyboardShortcut("w", modifiers: [.command, .option])
         }
         TextEditingCommands()
     }
