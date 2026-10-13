@@ -1,0 +1,53 @@
+name: Native builds
+on:
+  push:
+    branches: [main, "feature/**"]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: native-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  build:
+    runs-on: xcode-27
+    timeout-minutes: 25
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_27.app/Contents/Developer
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify Apple SDKs
+        run: |
+          xcodebuild -version
+          xcrun --sdk macosx --show-sdk-version
+          xcrun --sdk iphonesimulator --show-sdk-version
+      - name: Generate project
+        run: |
+          if ! command -v xcodegen >/dev/null; then brew install xcodegen; fi
+          xcodegen generate
+          git diff --exit-code -- Scraps.xcodeproj App/Scraps/Info.plist App/ScrapsMobile/Info.plist
+      - name: Package rules
+        run: swift test --package-path Packages/StickyKit
+      - name: macOS build
+        run: |
+          xcodebuild -project Scraps.xcodeproj -scheme Scraps -configuration Debug \
+            -destination 'platform=macOS,arch=arm64' -derivedDataPath build.noindex/DerivedData \
+            build CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=''
+      - name: Verify Mac development product
+        run: |
+          PRODUCT=build.noindex/DerivedData/Build/Products/Debug/Scraps.app
+          codesign --force --sign - --entitlements App/Scraps/Scraps.entitlements "$PRODUCT"
+          codesign --verify --deep --strict "$PRODUCT"
+          codesign -d --entitlements :- "$PRODUCT"
+          python3 Scripts/verify-product.py "$PRODUCT"
+          ditto -c -k --sequesterRsrc --keepParent "$PRODUCT" build.noindex/Scraps-macOS.zip
+      - name: iOS and iPadOS build
+        run: |
+          xcodebuild -project Scraps.xcodeproj -scheme ScrapsMobile -configuration Debug \
+            -destination 'generic/platform=iOS Simulator' -derivedDataPath build.noindex/DerivedData \
+            build CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=''
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Scraps-macOS-development
+          path: build.noindex/Scraps-macOS.zip

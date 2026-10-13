@@ -1,0 +1,62 @@
+# Preparação para a App Store
+
+Nome de listagem proposto: **Scraps — Sticky Notes**. O nome exibido no
+dispositivo continua sendo **Scraps**. A disponibilidade do nome depende do
+cadastro no App Store Connect.
+
+Categoria: produtividade. Plataformas: macOS 27, iOS 27 e iPadOS 27. O código
+está sob licença proprietária, com todos os direitos reservados. A distribuição
+pela loja usa a licença padrão da Apple.
+
+## Texto em português
+
+**Subtítulo:** Ideias sempre por perto
+
+Anote uma ideia, uma lista ou um lembrete sem interromper o que está fazendo.
+No Mac, cada nota tem sua própria janela: escolha uma cor, mantenha na frente,
+recolha à primeira linha e deixe visível em todas as Mesas.
+
+Escreva com negrito, itálico, listas e caixas de marcar. Crie notas que duram
+apenas uma sessão, recupere notas fechadas por 30 dias e compartilhe o que
+merece ficar no Notas da Apple.
+
+No iPhone e no iPad, encontre suas notas numa biblioteca adaptável. As notas
+ficam no dispositivo, sem conta, publicidade ou rastreamento.
+
+Palavras-chave: notas,adesivas,lembretes,rascunho,listas,tarefas,stickies
+
+## English
+
+**Subtitle:** Keep your thoughts close
+
+Capture a thought, a list, or a little reminder without losing your place.
+On Mac, every sticky has its own window. Choose a color, float it above other
+apps, collapse it to its first line, or keep it visible across desktops.
+
+Use bold, italic, lists, and checklists. Make a session-only note, recover
+closed notes for 30 days, and share anything worth keeping with Apple Notes.
+
+On iPhone and iPad, browse an adaptable note library. Your notes stay on your
+device, with no accounts, advertising, or tracking.
+
+Keywords: sticky,notes,reminders,scratchpad,lists,tasks,stickies
+
+## Validação antes de enviar
+
+1. Rodar os testes do pacote e os builds limpos com Xcode 27.
+2. Conferir manualmente aparência clara/escura, Aumentar Contraste, Reduzir
+   Transparência, VoiceOver, foco, atalho global, Mesas e tela cheia.
+3. Instalar a cópia do Mac e conferir manualmente Spotlight: Scraps → Tab.
+   A primeira ação deve ser Nova nota; a ordem final depende do Spotlight.
+4. Arquivar com certificado Apple Distribution: `Scripts/archive.sh macOS`
+   e `Scripts/archive.sh iOS`. A equipe precisa de certificado e perfil de
+   distribuição válidos.
+5. Validar o arquivo no Organizer do Xcode; conferir assinatura e entitlements.
+   O produto macOS deve ter sandbox e não pode incluir get-task-allow.
+6. Cadastrar URLs públicas de suporte e privacidade, confirmar o nome e preparar
+   screenshots reais das duas plataformas. Este repositório não publica URLs.
+7. No formulário de privacidade, declarar que o app não coleta dados. Conferir
+   novamente caso um serviço externo seja adicionado.
+
+Os artefatos de desenvolvimento têm assinatura ad hoc. Eles não substituem um
+arquivo assinado para distribuição. Nenhum envio ou publicação é automatizado.
