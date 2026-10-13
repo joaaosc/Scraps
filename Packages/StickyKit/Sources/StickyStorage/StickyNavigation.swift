@@ -41,7 +41,9 @@ public enum StickyNavigation: Equatable, Sendable {
         activity.isEligibleForHandoff = true
         activity.isEligibleForSearch = false
         activity.isEligibleForPublicIndexing = false
+        #if os(iOS)
         activity.isEligibleForPrediction = false
+        #endif
         return activity
     }
 

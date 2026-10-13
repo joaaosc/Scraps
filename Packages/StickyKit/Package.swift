@@ -28,7 +28,7 @@ products += [
     .library(name: "StickySync", targets: ["StickySync"]),
 ]
 targets += [
-    .target(name: "StickyEditor", dependencies: ["StickyDomain"], resources: [.process("Resources")]),
+    .target(name: "StickyEditor", dependencies: ["StickyDomain"], resources: [.process("Resources"), .process("Shaders")]),
     .target(name: "StickyUI", dependencies: ["StickyDomain", "StickyStorage", "StickyEditor"], resources: [.process("Resources")]),
     .target(name: "StickyIntents", dependencies: [
         "StickyDomain",

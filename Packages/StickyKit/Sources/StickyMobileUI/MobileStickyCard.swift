@@ -30,6 +30,7 @@ struct MobileStickyCard: View {
         .frame(maxWidth: .infinity, minHeight: 190, alignment: .topLeading)
         .background(sticky.color.mobileSurface, in: RoundedRectangle(cornerRadius: 16))
         .overlay { RoundedRectangle(cornerRadius: 16).strokeBorder(.primary.opacity(0.08), lineWidth: 1) }
+        .overlay { StickyMetalAccent(trigger: sticky.id.uuidString + sticky.color.rawValue) }
         .contentShape(RoundedRectangle(cornerRadius: 16))
         .accessibilityElement(children: .combine)
         .accessibilityValue(sessionOnly ? Text("This Session", bundle: .module) : Text("Saved", bundle: .module))

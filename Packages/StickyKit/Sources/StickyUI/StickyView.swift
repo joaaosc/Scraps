@@ -37,6 +37,7 @@ struct StickyView: View {
             }
         }
         .disabled(model.isClosing)
+        .overlay { StickyMetalAccent(trigger: model.id.uuidString + model.color.rawValue) }
     }
 
     private var header: some View {
