@@ -291,6 +291,12 @@ struct StickyModelTests {
     final class Spy {
         var saved: [Sticky] = []
         var deleted: [UUID] = []
+        var trashed: [Sticky] = []
+        var failTrash = false
+        var collapsed: Bool?
+        var allSpaces: Bool?
+        var color: StickyColor?
+        var title: String?
         var events: [String] = []
         var shared: [String] = []
         var closedWindow = 0
@@ -316,6 +322,12 @@ struct StickyModelTests {
             events.append("delete")
         }
 
+        func moveToTrash(_ sticky: Sticky) throws {
+            if failTrash { throw CocoaError(.fileWriteUnknown) }
+            trashed.append(sticky)
+            events.append("trash")
+        }
+
         func releaseSave() {
             blockedSave?.resume()
             blockedSave = nil
@@ -327,11 +339,20 @@ struct StickyModelTests {
         spy: Spy,
         autosave: Duration = .milliseconds(20),
         ceiling: Duration = .seconds(60),
-        sharingCeiling: Duration = .seconds(60)
+        sharingCeiling: Duration = .seconds(60),
+        recoverable: Bool = false,
+        sessionOnly: Bool = false
     ) -> StickyModel {
         let sticky = Sticky(text: text, createdAt: Date(timeIntervalSince1970: 1_800_000_000))
+        let moveToTrash: (@Sendable (Sticky) async throws -> Void)?
+        if recoverable {
+            moveToTrash = { sticky in try await spy.moveToTrash(sticky) }
+        } else {
+            moveToTrash = nil
+        }
         return StickyModel(
             sticky: sticky,
+            isSessionOnly: sessionOnly,
             autosaveDelay: autosave,
             autosaveCeiling: ceiling,
             confirmationDuration: .milliseconds(30),
@@ -346,7 +367,12 @@ struct StickyModelTests {
                 },
                 closeWindow: { spy.closedWindow += 1 },
                 applyLevel: { spy.level = $0 },
-                copyToPasteboard: { spy.pasteboard = $0 }
+                copyToPasteboard: { spy.pasteboard = $0 },
+                moveToTrash: moveToTrash,
+                applyCollapsed: { spy.collapsed = $0 },
+                applyAllSpaces: { spy.allSpaces = $0 },
+                applyColor: { spy.color = $0 },
+                updateTitle: { spy.title = $0 }
             )
         )
     }
@@ -425,16 +451,16 @@ struct StickyModelTests {
         #expect(spy.closedWindow == 1)
     }
 
-    @Test("Closing a sticky with text asks first and deletes nothing yet")
-    func textAsksFirst() async {
+    @Test("Closing a sticky with text closes without a confirmation")
+    func textClosesWithoutAsking() async {
         let spy = Spy()
         let model = makeModel(text: "Buy milk", spy: spy)
 
         await model.requestClose().value
 
-        #expect(model.isConfirmingDelete)
-        #expect(spy.deleted.isEmpty)
-        #expect(spy.closedWindow == 0)
+        #expect(!model.isConfirmingDelete)
+        #expect(spy.deleted == [model.id])
+        #expect(spy.closedWindow == 1)
     }
 
     @Test("Confirming the question deletes the sticky and closes the window")
@@ -628,5 +654,197 @@ struct StickyModelTests {
         model.copyText()
 
         #expect(spy.pasteboard == "Buy milk")
+    }
+
+    @Test("Closing keeps the latest unsaved text and emphasis in Recently Deleted")
+    func closeRecoversPendingEdits() async {
+        let spy = Spy()
+        let model = makeModel(text: "Old", spy: spy, autosave: .seconds(600), recoverable: true)
+        model.text = "Keep this"
+        model.richText = StickyRichText(runs: [StickyTextRun(location: 0, length: 4, bold: true)])
+        model.color = .purple
+
+        await model.requestClose().value
+        await model.flush().value
+
+        #expect(spy.saved.isEmpty)
+        #expect(spy.deleted.isEmpty)
+        #expect(spy.trashed.count == 1)
+        #expect(spy.trashed.first?.text == "Keep this")
+        #expect(spy.trashed.first?.richText == model.richText)
+        #expect(spy.trashed.first?.color == .purple)
+        #expect(spy.closedWindow == 1)
+        #expect(!model.isConfirmingDelete)
+    }
+
+    @Test("Session notes leave no recovery entry even when a recovery store exists")
+    func sessionCloseDeletesDirectly() async {
+        let spy = Spy()
+        let model = makeModel(text: "Temporary", spy: spy, recoverable: true, sessionOnly: true)
+
+        await model.requestClose().value
+
+        #expect(spy.trashed.isEmpty)
+        #expect(spy.deleted == [model.id])
+        #expect(spy.closedWindow == 1)
+    }
+
+    @Test("A failed recovery write keeps the window and permits a later retry")
+    func failedCloseCanRetry() async {
+        let spy = Spy()
+        spy.failTrash = true
+        let model = makeModel(text: "Keep", spy: spy, recoverable: true)
+
+        await model.requestClose().value
+        #expect(spy.closedWindow == 0)
+        #expect(spy.trashed.isEmpty)
+        guard case .failure = model.status else { Issue.record("Expected recovery failure"); return }
+
+        spy.failTrash = false
+        await model.requestClose().value
+        #expect(spy.closedWindow == 1)
+        #expect(spy.trashed.first?.text == "Keep")
+    }
+
+    @Test("A failed close resumes saving its pending edit without further typing")
+    func failedCloseResumesAutosave() async {
+        let spy = Spy()
+        spy.failTrash = true
+        let model = makeModel(text: "Old", spy: spy, recoverable: true)
+        model.text = "Unsaved edit"
+
+        await model.requestClose().value
+        #expect(spy.closedWindow == 0)
+        #expect(await eventually { spy.saved.last?.text == "Unsaved edit" })
+        guard case .failure = model.status else {
+            Issue.record("The failed-close message should remain visible after the save")
+            return
+        }
+    }
+
+    @Test("Expanded geometry survives collapse and appearance changes")
+    func appearanceAutosavesWithoutChangingGeometry() async {
+        let spy = Spy()
+        let model = makeModel(text: "Keep", spy: spy, autosave: .seconds(600))
+        let frame = StickyFrame(x: 10, y: 20, width: 300, height: 240)
+        model.frameDidChange(frame)
+        model.isCollapsed = true
+        model.appearsOnAllSpaces = true
+        model.color = .blue
+        await model.flush().value
+
+        #expect(spy.saved.last?.frame == frame)
+        #expect(spy.saved.last?.isCollapsed == true)
+        #expect(spy.saved.last?.appearsOnAllSpaces == true)
+        #expect(spy.saved.last?.color == .blue)
+        #expect(spy.collapsed == true)
+        #expect(spy.allSpaces == true)
+    }
+
+    @Test("A plain text replacement clears previous emphasis and updates the window title")
+    func plainReplacementClearsStaleFormatting() async {
+        let spy = Spy()
+        let model = makeModel(text: "Old", spy: spy, autosave: .seconds(600))
+        model.richText = StickyRichText(runs: [StickyTextRun(location: 0, length: 3, italic: true)])
+        model.text = "New title\nSecond line"
+        await model.flush().value
+
+        #expect(model.richText == nil)
+        #expect(spy.saved.last?.richText == nil)
+        #expect(spy.title == "New title")
+    }
+
+}
+
+
+@MainActor
+@Suite("Session creation routing")
+struct StickyBoardSessionTests {
+    @Test("A session note is stored before launch without reaching the persistent store")
+    func sessionNeverTouchesDiskStore() async throws {
+        let durable = StickyStorage.MemoryStickyStore()
+        let temporary = StickyStorage.MemoryStickyStore()
+        let board = StickyBoard(sessionStore: temporary)
+        board.connect(to: durable)
+
+        try await board.addSticky(text: "For now", color: .green, sessionOnly: true)
+
+        #expect(await durable.stickies().isEmpty)
+        #expect(await temporary.stickies().map(\.text) == ["For now"])
+        #expect(await temporary.stickies().first?.color == .green)
+        #expect(!board.hasOpenStickies)
+    }
+
+    @Test("An explicit color takes precedence over the default preference")
+    func explicitColorWins() async throws {
+        let name = "StickyBoardTests-\(UUID())"
+        let defaults = UserDefaults(suiteName: name)!
+        defer { defaults.removePersistentDomain(forName: name) }
+        defaults.set("yellow", forKey: "defaultStickyColor")
+        defaults.set(false, forKey: "defaultFloatsOnTop")
+        defaults.set(true, forKey: "defaultAppearsOnAllSpaces")
+        let store = StickyStorage.MemoryStickyStore()
+        let board = StickyBoard(defaults: defaults)
+        board.connect(to: store)
+
+        try await board.addSticky(text: "Default")
+        try await board.addSticky(text: "Chosen", color: .pink)
+
+        let notes = await store.stickies()
+        #expect(notes.first { $0.text == "Default" }?.color == .yellow)
+        #expect(notes.first { $0.text == "Chosen" }?.color == .pink)
+        #expect(notes.allSatisfy { !$0.floatsOnTop && $0.appearsOnAllSpaces })
+    }
+}
+
+@Suite("Folded note geometry")
+struct StickyCollapsedPlacementTests {
+    @Test("Collapsing preserves the header's top edge and expanded size")
+    func foldRoundTrip() {
+        let expanded = CGRect(x: 100, y: 200, width: 300, height: 240)
+        let folded = StickyPlacement.collapsedFrame(expanded: expanded)
+        #expect(folded.maxY == expanded.maxY)
+        #expect(folded.height == StickyPlacement.collapsedHeight)
+        #expect(StickyPlacement.expandedFrame(afterMovingCollapsed: folded, previousExpanded: expanded) == expanded)
+    }
+
+    @Test("Moving or widening a folded note preserves its remembered body height")
+    func moveAndResizeFoldedNote() {
+        let previous = CGRect(x: 100, y: 200, width: 300, height: 240)
+        let folded = CGRect(x: 500, y: 600, width: 420, height: StickyPlacement.collapsedHeight)
+        let expanded = StickyPlacement.expandedFrame(afterMovingCollapsed: folded, previousExpanded: previous)
+        #expect(expanded.maxY == folded.maxY)
+        #expect(expanded.minX == folded.minX)
+        #expect(expanded.width == 420)
+        #expect(expanded.height == previous.height)
+    }
+}
+
+
+@MainActor
+@Suite("Sticky command focus")
+struct StickyBoardFocusTests {
+    @Test("Commands stop targeting a sticky when its window loses the keyboard")
+    func losingKeyboardClearsActiveSticky() {
+        let board = StickyBoard()
+        let id = UUID()
+        board.stickyDidBecomeKey(id)
+        #expect(board.activeStickyID == id)
+
+        board.stickyDidResignKey(id)
+        #expect(board.activeStickyID == nil)
+        #expect(board.activeModel == nil)
+    }
+
+    @Test("A delayed resignation cannot clear a different sticky that became active")
+    func delayedResignationKeepsNewFocus() {
+        let board = StickyBoard()
+        let previous = UUID()
+        let current = UUID()
+        board.stickyDidBecomeKey(previous)
+        board.stickyDidBecomeKey(current)
+
+        board.stickyDidResignKey(previous)
+        #expect(board.activeStickyID == current)
     }
 }

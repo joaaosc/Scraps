@@ -2,52 +2,89 @@ import AppKit
 import StickyDomain
 import Observation
 
-/// The state and actions of one sticky.
-///
-/// Owns the autosave: edits and moves are written a moment after they stop, and
-/// `flush()` writes anything pending when the window closes or the app quits.
-/// Everything that touches a window, the store or Notes is handed in, so the
-/// rules here — when to ask before closing, when a save may still happen — can
-/// be tested without any of them.
+/// Observable editor state. Window effects and persistence are injected so edits,
+/// recovery and the ordering of writes can be tested without a window server.
 @MainActor
 @Observable
-final class StickyModel {
-    enum Status: Equatable {
+public final class StickyModel {
+    public enum Status: Equatable {
         case sentToNotes
         case shared
         case failure(String)
     }
 
-    /// What the model needs from outside.
     struct Dependencies {
         var save: @Sendable (Sticky) async throws -> Void
         var delete: @Sendable (UUID) async throws -> Void
-        /// Puts the text on its way to Notes. The anchor is the sending
-        /// button's frame in window content coordinates.
         var share: @MainActor (
-            _ text: String,
-            _ anchor: CGRect,
-            _ completion: @escaping (NotesSharingAvailability.Outcome) -> Void
+            String, CGRect, @escaping (NotesSharingAvailability.Outcome) -> Void
         ) -> Void
         var closeWindow: @MainActor () -> Void
-        var applyLevel: @MainActor (_ floatsOnTop: Bool) -> Void
+        var applyLevel: @MainActor (Bool) -> Void
         var copyToPasteboard: @MainActor (String) -> Void
+        /// Closing keeps the current snapshot, including an edit whose debounce
+        /// has not elapsed. A session sticky deliberately bypasses recovery.
+        var moveToTrash: (@Sendable (Sticky) async throws -> Void)? = nil
+        var shareRichText: (@MainActor (
+            String, StickyRichText?, CGRect,
+            @escaping (NotesSharingAvailability.Outcome) -> Void
+        ) -> Void)? = nil
+        var copyRichText: (@MainActor (String, StickyRichText?) -> Void)? = nil
+        var applyCollapsed: @MainActor (Bool) -> Void = { _ in }
+        var applyAllSpaces: @MainActor (Bool) -> Void = { _ in }
+        var applyColor: @MainActor (StickyColor) -> Void = { _ in }
+        var updateTitle: @MainActor (String) -> Void = { _ in }
     }
 
-    var text: String {
+    public var text: String {
         didSet { if text != oldValue { textDidChange() } }
     }
-    var floatsOnTop: Bool {
-        didSet { if floatsOnTop != oldValue { floatingDidChange() } }
+    public var richText: StickyRichText? {
+        didSet {
+            guard richText != oldValue else { return }
+            base.edit(text: text, richText: richText)
+            scheduleSave()
+        }
     }
-    private(set) var status: Status?
-    var isConfirmingDelete = false
-    private(set) var isSharing = false
-    /// Whether the text field should take the keyboard when the window opens.
-    let startsFocused: Bool
+    public var color: StickyColor {
+        didSet {
+            guard color != oldValue else { return }
+            base.color = color
+            dependencies.applyColor(color)
+            scheduleSave()
+        }
+    }
+    public var floatsOnTop: Bool {
+        didSet {
+            guard floatsOnTop != oldValue else { return }
+            base.floatsOnTop = floatsOnTop
+            dependencies.applyLevel(floatsOnTop)
+            scheduleSave()
+        }
+    }
+    public var isCollapsed: Bool {
+        didSet {
+            guard isCollapsed != oldValue else { return }
+            base.isCollapsed = isCollapsed
+            dependencies.applyCollapsed(isCollapsed)
+            scheduleSave()
+        }
+    }
+    public var appearsOnAllSpaces: Bool {
+        didSet {
+            guard appearsOnAllSpaces != oldValue else { return }
+            base.appearsOnAllSpaces = appearsOnAllSpaces
+            dependencies.applyAllSpaces(appearsOnAllSpaces)
+            scheduleSave()
+        }
+    }
+    public private(set) var status: Status?
+    public private(set) var isSharing = false
+    public var isConfirmingDelete = false
+    public let startsFocused: Bool
+    public let isSessionOnly: Bool
 
-    @ObservationIgnored var sendButtonFrame: CGRect = .zero
-
+    @ObservationIgnored public var sendButtonFrame: CGRect = .zero
     @ObservationIgnored private var base: Sticky
     @ObservationIgnored private let dependencies: Dependencies
     @ObservationIgnored private let autosaveDelay: Duration
@@ -67,16 +104,22 @@ final class StickyModel {
     init(
         sticky: Sticky,
         startsFocused: Bool = false,
+        isSessionOnly: Bool = false,
         autosaveDelay: Duration = StickyAutosavePolicy.defaultDelay,
         autosaveCeiling: Duration = StickyAutosavePolicy.defaultCeiling,
         confirmationDuration: Duration = .seconds(3),
         sharingCeiling: Duration = .seconds(60),
         dependencies: Dependencies
     ) {
-        self.base = sticky
-        self.text = sticky.text
-        self.floatsOnTop = sticky.floatsOnTop
+        base = sticky
+        text = sticky.text
+        richText = sticky.richText
+        color = sticky.color
+        floatsOnTop = sticky.floatsOnTop
+        isCollapsed = sticky.isCollapsed
+        appearsOnAllSpaces = sticky.appearsOnAllSpaces
         self.startsFocused = startsFocused
+        self.isSessionOnly = isSessionOnly
         self.autosaveDelay = autosaveDelay
         self.autosaveCeiling = autosaveCeiling
         self.confirmationDuration = confirmationDuration
@@ -84,41 +127,47 @@ final class StickyModel {
         self.dependencies = dependencies
     }
 
-    var id: UUID { base.id }
+    public var id: UUID { base.id }
+    public var title: String {
+        let firstLine = text.components(separatedBy: .newlines).first ?? ""
+        let line = firstLine.trimmingCharacters(in: .whitespaces)
+        return line.isEmpty ? String(localized: "Untitled", bundle: .module) : line
+    }
 
-    /// What would be written right now.
-    var snapshot: Sticky {
+    public var snapshot: Sticky {
         var sticky = base
+        sticky.text = text
+        sticky.richText = richText
+        sticky.color = color
         sticky.floatsOnTop = floatsOnTop
+        sticky.isCollapsed = isCollapsed
+        sticky.appearsOnAllSpaces = appearsOnAllSpaces
         return sticky
     }
 
-    // MARK: Sending
-
-    /// Why the person cannot send this sticky yet, in words.
-    var sendUnavailableReason: String? {
+    public var sendUnavailableReason: String? {
         NotesSharingAvailability.unavailableReason(forText: text)
     }
+    public var canSend: Bool { sendUnavailableReason == nil && !isSharing }
 
-    var canSend: Bool { sendUnavailableReason == nil && !isSharing }
-
-    func sendToNotes() {
+    public func sendToNotes() {
         guard canSend else { return }
         isSharing = true
         status = nil
         shareGeneration += 1
         let generation = shareGeneration
         startSharingTimeout(for: generation)
-        dependencies.share(text, sendButtonFrame) { [weak self] outcome in
-            // An answer to a send that was already given up on is not about
-            // the one in progress.
-            guard let self, shareGeneration == generation else { return }
+        let completion: (NotesSharingAvailability.Outcome) -> Void = { [weak self] outcome in
+            guard let self, shareGeneration == generation, isSharing else { return }
             sharingDidEnd(outcome)
+        }
+        if let shareRichText = dependencies.shareRichText {
+            shareRichText(text, richText, sendButtonFrame, completion)
+        } else {
+            dependencies.share(text, sendButtonFrame, completion)
         }
     }
 
-    /// A service chosen from the picker may never report back. After the
-    /// ceiling the button works again, claiming neither success nor failure.
     private func startSharingTimeout(for generation: Int) {
         sharingTimeout?.cancel()
         sharingTimeout = Task { [weak self, sharingCeiling] in
@@ -150,50 +199,47 @@ final class StickyModel {
         }
     }
 
-    func copyText() {
-        dependencies.copyToPasteboard(text)
-    }
-
-    // MARK: Closing
-
-    /// Closing a sticky deletes it. An empty one goes silently; one with text
-    /// asks first, because the text is kept nowhere else.
-    ///
-    /// - Returns: the deletion, for callers that need to wait for it. Already
-    ///   finished when the question is being asked instead.
-    @discardableResult
-    func requestClose() -> Task<Void, Never> {
-        if text.allSatisfy(\.isWhitespace) {
-            return Task { await deleteAndClose() }
+    public func copyText() {
+        if let copyRichText = dependencies.copyRichText {
+            copyRichText(text, richText)
+        } else {
+            dependencies.copyToPasteboard(text)
         }
-        isConfirmingDelete = true
-        return Task {}
     }
 
+    public func toggleCollapsed() { isCollapsed.toggle() }
+
+    /// Closing is immediate and recoverable. Session notes are removed from
+    /// memory; persistent notes go to Recently Deleted without a question.
     @discardableResult
-    func confirmDelete() -> Task<Void, Never> {
+    public func requestClose() -> Task<Void, Never> {
         Task { await deleteAndClose() }
     }
+
+    @discardableResult
+    func confirmDelete() -> Task<Void, Never> { requestClose() }
 
     func deleteAndClose() async {
         guard !isDeleted else { return }
         isDeleted = true
         autosaveTask?.cancel()
-        // A save still in flight lands first, so it cannot recreate the file
-        // after the delete.
         await lastSave?.value
         do {
-            try await dependencies.delete(base.id)
+            if !isSessionOnly, let moveToTrash = dependencies.moveToTrash {
+                try await moveToTrash(snapshot)
+            } else {
+                try await dependencies.delete(base.id)
+            }
             dependencies.closeWindow()
         } catch {
             isDeleted = false
-            show(.failure("Could not delete this sticky: \(error.localizedDescription)"), for: nil)
+            // A failed close keeps the editor alive. Resume the save cancelled
+            // for deletion so its pending text remains safe without another edit.
+            if isDirty { scheduleSave() }
+            show(.failure(String(format: String(localized: "Could not close this sticky: %@", bundle: .module), error.localizedDescription)), for: nil)
         }
     }
 
-    // MARK: Autosave
-
-    /// Records where the window was left. Saved with the same delay as text.
     func frameDidChange(_ frame: StickyFrame) {
         guard base.frame != frame else { return }
         base.frame = frame
@@ -202,29 +248,22 @@ final class StickyModel {
 
     private func textDidChange() {
         base.edit(text: text)
-        // A confirmation is about the text that was sent, not the text now.
+        // A plain-text replacement cannot reuse ranges from the previous text.
+        richText = nil
+        dependencies.updateTitle(title)
         if status == .sentToNotes || status == .shared { status = nil }
         scheduleSave()
     }
 
-    private func floatingDidChange() {
-        base.floatsOnTop = floatsOnTop
-        dependencies.applyLevel(floatsOnTop)
-        scheduleSave()
-    }
-
     private func scheduleSave() {
+        guard !isDeleted else { return }
         isDirty = true
+        base.updatedAt = max(Date(), base.createdAt)
         let now = ContinuousClock.now
         let first = firstUnsavedChange ?? now
         firstUnsavedChange = first
-        // The wait restarts with each edit, but never runs past the ceiling
-        // counted from the first change nobody has saved: continuous typing
-        // must not postpone the write for ever.
         let wait = StickyAutosavePolicy.delay(
-            debounce: autosaveDelay,
-            ceiling: autosaveCeiling,
-            sinceFirstChange: now - first
+            debounce: autosaveDelay, ceiling: autosaveCeiling, sinceFirstChange: now - first
         )
         autosaveTask?.cancel()
         autosaveTask = Task { [weak self] in
@@ -234,10 +273,8 @@ final class StickyModel {
         }
     }
 
-    /// Writes anything pending now. The returned task finishes when the write
-    /// has; callers that must not lose text — closing, quitting — await it.
     @discardableResult
-    func flush() -> Task<Void, Never> {
+    public func flush() -> Task<Void, Never> {
         autosaveTask?.cancel()
         if isDirty { commit() }
         return lastSave ?? Task {}
@@ -251,8 +288,6 @@ final class StickyModel {
         let previous = lastSave
         let save = dependencies.save
         lastSave = Task { [weak self] in
-            // One write at a time, in order: the last edit must be the last
-            // thing on disk.
             await previous?.value
             guard let self, !isDeleted else { return }
             do {
@@ -270,15 +305,10 @@ final class StickyModel {
         if case .failure = status { status = nil }
     }
 
-    /// The text is still unsaved, so the next edit and the flush at close or
-    /// quit try again.
     private func saveDidFail(_ error: Error) {
         isDirty = true
         firstUnsavedChange = firstUnsavedChange ?? .now
         hasSaveFailure = true
-        show(
-            .failure("Could not save this sticky: \(error.localizedDescription)"),
-            for: nil
-        )
+        show(.failure(String(format: String(localized: "Could not save this sticky: %@", bundle: .module), error.localizedDescription)), for: nil)
     }
 }

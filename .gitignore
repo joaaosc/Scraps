@@ -8,3 +8,4 @@ xcuserdata/
 
 # Xcode writes package schemes here; none of it describes the project.
 .swiftpm/
+__pycache__/

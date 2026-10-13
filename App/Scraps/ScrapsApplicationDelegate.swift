@@ -1,4 +1,7 @@
 import AppKit
+import OSLog
+import StickyIntents
+import StickyStorage
 import StickyUI
 
 final class ScrapsApplicationDelegate: NSObject, NSApplicationDelegate {
@@ -7,6 +10,28 @@ final class ScrapsApplicationDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         StickyBoard.shared.start()
         ScrapsWelcome.leaveOnFirstLaunch()
+        Task {
+            do { try await StickyActionIndex.rebuild() }
+            catch {
+                Logger(subsystem: StickyKitIdentity.bundleIdentifier, category: "Spotlight")
+                    .error("Could not update the action index: \(error.localizedDescription, privacy: .public)")
+            }
+        }
+    }
+
+    func application(_ application: NSApplication, continue userActivity: NSUserActivity,
+                     restorationHandler: @escaping ([any NSUserActivityRestoring]) -> Void) -> Bool {
+        guard let action = StickyActionEntity.action(from: userActivity) else { return false }
+        Task {
+            do { try await StickyActionRouter.perform(action) }
+            catch {
+                let alert = NSAlert()
+                alert.messageText = String(localized: "Could not open this action")
+                alert.informativeText = error.localizedDescription
+                alert.runModal()
+            }
+        }
+        return true
     }
 
     /// Lets the open stickies write what they have not saved yet before the app

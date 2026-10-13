@@ -1,4 +1,6 @@
 import AppKit
+import StickyDomain
+import StickyEditor
 
 /// Hands a sticky's text to Apple Notes through the system's sharing service.
 ///
@@ -24,6 +26,7 @@ final class NotesSharer: NSObject, NSSharingServiceDelegate, @MainActor NSSharin
     ///   - completion: called once, on the main actor, when the share ends.
     func share(
         _ text: String,
+        richText: StickyRichText? = nil,
         from window: NSWindow,
         anchor: CGRect,
         completion: @escaping (NotesSharingAvailability.Outcome) -> Void
@@ -40,9 +43,16 @@ final class NotesSharer: NSObject, NSSharingServiceDelegate, @MainActor NSSharin
         let service = NSSharingService(
             named: NSSharingService.Name(NotesSharingAvailability.serviceName)
         )
+        let attributedText = StickyRichTextBridge.foundationText(text: text, richText: richText)
+        // Some extensions accept attributed text, while others only take a
+        // string. Prefer the native rich item when the service can handle it.
+        let richItems: [Any] = [attributedText]
+        let plainItems: [Any] = [text]
+        let items = richText != nil && (service?.canPerform(withItems: richItems) ?? false)
+            ? richItems : plainItems
         route = NotesSharingAvailability.route(
             serviceFound: service != nil,
-            canPerformWithText: service?.canPerform(withItems: [text]) ?? false
+            canPerformWithText: service?.canPerform(withItems: items) ?? false
         )
 
         switch route {
@@ -50,9 +60,9 @@ final class NotesSharer: NSObject, NSSharingServiceDelegate, @MainActor NSSharin
             guard let service else { return }
             service.delegate = self
             activeService = service
-            service.perform(withItems: [text])
+            service.perform(withItems: items)
         case .picker:
-            let picker = NSSharingServicePicker(items: [text])
+            let picker = NSSharingServicePicker(items: richText == nil ? plainItems : richItems)
             picker.delegate = self
             activePicker = picker
             if let contentView = window.contentView {
@@ -64,6 +74,8 @@ final class NotesSharer: NSObject, NSSharingServiceDelegate, @MainActor NSSharin
                     height: anchor.height
                 )
                 picker.show(relativeTo: flipped, of: contentView, preferredEdge: .minY)
+            } else {
+                finish(with: .failed(String(localized: "Could not open the sharing menu.", bundle: .module)))
             }
         }
     }

@@ -3,22 +3,21 @@ import SwiftUI
 /// The corner every layer of a sticky shares, so the panel, the content clip
 /// and the border never drift apart by a point.
 public enum StickyGlassMetrics {
-    public static let cornerRadius: CGFloat = 18
+    public static let cornerRadius: CGFloat = 16
 
     public static var shape: RoundedRectangle {
         RoundedRectangle(cornerRadius: cornerRadius)
     }
 }
 
-/// What a sticky draws over its AppKit glass: nothing at rest, a plate only
-/// when an accessibility setting asks for one, and a border under Increase
-/// Contrast.
+/// The window's accessibility surface and shared clipped edge. The note itself
+/// draws an opaque reading surface; glass is visible only around its chrome.
 ///
 /// The material itself belongs to `StickyGlassHostingView`, the
 /// `NSGlassEffectView` the SwiftUI tree is hosted in. Drawing a second
 /// `.glassEffect` here would put glass on glass. The *regular* Liquid Glass
-/// variant already blurs and adjusts the luminosity of what is behind it to
-/// keep text legible, so a plate at rest would only turn it into a milky pane.
+/// variant provides the slim window chrome. Accessibility settings can give
+/// that chrome an opaque backing without introducing a second glass effect.
 ///
 /// The plate is drawn with `.ignoresSafeArea()`: the panel is `.titled` with
 /// `.fullSizeContentView`, and without it the plate stops short of the hidden

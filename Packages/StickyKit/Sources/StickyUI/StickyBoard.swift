@@ -1,211 +1,311 @@
 import AppKit
+import Observation
 import OSLog
 import StickyDomain
 import StickyStorage
 
 public enum StickyBoardError: Error, Equatable, LocalizedError, Sendable {
     case storeUnavailable
-
     public var errorDescription: String? {
-        switch self {
-        case .storeUnavailable:
-            "The folder where stickies are kept could not be reached, so none can be created."
-        }
+        String(localized: "The folder where stickies are kept could not be reached, so none can be created.", bundle: .module)
     }
 }
 
-/// Owns one window per sticky and keeps them equal to what the store holds.
-///
-/// Every write to the store is announced without saying what changed, so the
-/// board reads the store again and reconciles: a new file opens a window and
-/// brings it forward, a removed file closes its window. The board's own writes
-/// arrive the same way, so every path that makes a sticky — the menu, an
-/// intent, another process sharing the folder — ends in a window through one
-/// door.
+/// Owns one native window per sticky. Persistent and session notes share the
+/// same editor while session content is routed exclusively to memory.
 @MainActor
+@Observable
 public final class StickyBoard {
     public static let shared = StickyBoard()
-
     private static let logger = Logger(
-        subsystem: StickyKitIdentity.bundleIdentifier,
-        category: "Stickies"
+        subsystem: StickyKitIdentity.bundleIdentifier, category: "Stickies"
     )
 
-    private var store: (any StickyStore)?
-    private var controllers: [UUID: StickyWindowController] = [:]
-    /// Stickies the person is creating or closing here, so the reading that
-    /// reconciles does not treat the moment between the write and the window
-    /// as a change to undo.
-    private var focusOnOpen: Set<UUID> = []
-    private var closedHere: Set<UUID> = []
-    private var observation: Task<Void, Never>?
+    public private(set) var activeStickyID: UUID?
+    public private(set) var recentlyDeleted: [Sticky] = []
+    public private(set) var lastError: String?
+    public private(set) var openStickies: [Sticky] = []
+    public private(set) var globalShortcutEnabled = false
+    @ObservationIgnored public var showSettingsHandler: (@MainActor () -> Void)?
+    @ObservationIgnored public var showColorPickerHandler: (@MainActor () -> Void)?
+    @ObservationIgnored private var store: (any StickyStore)?
+    @ObservationIgnored private let sessionStore: MemoryStickyStore
+    @ObservationIgnored private var sessionIDs: Set<UUID> = []
+    @ObservationIgnored private var controllers: [UUID: StickyWindowController] = [:]
+    @ObservationIgnored private var focusOnOpen: Set<UUID> = []
+    @ObservationIgnored private var closedHere: Set<UUID> = []
+    @ObservationIgnored private var observation: Task<Void, Never>?
+    @ObservationIgnored private var maintenance: Task<Void, Never>?
+    @ObservationIgnored private var shortcut: StickyGlobalShortcut?
+    @ObservationIgnored private let defaults: UserDefaults
 
-    init() {}
+    init(defaults: UserDefaults = .standard, sessionStore: MemoryStickyStore = MemoryStickyStore()) {
+        self.defaults = defaults
+        self.sessionStore = sessionStore
+    }
 
-    /// Says where stickies are kept. From here on a sticky can be created;
-    /// its window only appears once `start()` is called.
-    ///
-    /// Separate from `start()` because the two happen at different moments:
-    /// the store is known as soon as the process begins, so an intent that
-    /// launched the app never finds a board that cannot create, while windows
-    /// wait for the app to finish launching. The first store given is kept.
+    deinit {
+        observation?.cancel()
+        maintenance?.cancel()
+    }
+
+    public var activeModel: StickyModel? {
+        activeStickyID.flatMap { controllers[$0]?.model }
+    }
+    public var hasOpenStickies: Bool { !openStickies.isEmpty }
+
     public func connect(to store: any StickyStore) {
         guard self.store == nil else { return }
         self.store = store
     }
 
-    /// Begins keeping windows and store equal: opens every stored sticky, then
-    /// follows changes. Calling it again does nothing.
-    ///
-    /// Without a store, as in tests and previews, nothing opens.
     public func start() {
-        guard observation == nil, store != nil else { return }
-        // The stream exists before the first reading, so a sticky created in
-        // between is announced rather than missed.
+        guard observation == nil else { return }
         let changes = StickyChanges.stream()
         observation = Task { [weak self] in
             await self?.reconcile()
             for await _ in changes {
+                guard !Task.isCancelled else { return }
                 await self?.reconcile()
+            }
+        }
+        maintenance = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(60 * 60))
+                guard !Task.isCancelled else { return }
+                await self?.refreshRecentlyDeleted()
+                if self == nil { return }
+            }
+        }
+        if defaults.bool(forKey: "globalShortcutEnabled") {
+            do { try setGlobalShortcutEnabled(true) }
+            catch {
+                defaults.set(false, forKey: "globalShortcutEnabled")
+                report(String(localized: "Could not enable the global shortcut", bundle: .module), error)
             }
         }
     }
 
-    /// Creates a sticky holding `text` and opens it with the keyboard in it.
-    ///
-    /// The window comes from the reconciliation the write sets off, not from
-    /// here, so this returns once the sticky is stored.
-    public func addSticky(text: String = "") async throws {
-        guard let store else { throw StickyBoardError.storeUnavailable }
-        let sticky = Sticky(text: text)
+    public func addSticky(
+        text: String = "", color: StickyColor? = nil, sessionOnly: Bool = false
+    ) async throws {
+        let target: any StickyStore
+        if sessionOnly {
+            target = sessionStore
+        } else {
+            guard let store else { throw StickyBoardError.storeUnavailable }
+            target = store
+        }
+        let defaultColor = StickyColor(rawValue: defaults.string(forKey: "defaultStickyColor") ?? "clear") ?? .clear
+        let floats = defaults.object(forKey: "defaultFloatsOnTop") == nil
+            ? true : defaults.bool(forKey: "defaultFloatsOnTop")
+        let sticky = Sticky(
+            text: text,
+            floatsOnTop: floats,
+            color: color ?? defaultColor,
+            appearsOnAllSpaces: defaults.bool(forKey: "defaultAppearsOnAllSpaces")
+        )
         focusOnOpen.insert(sticky.id)
+        if sessionOnly { sessionIDs.insert(sticky.id) }
         do {
-            try await store.save(sticky)
+            try await target.save(sticky)
+            // In-memory writes have no distributed file announcement. This
+            // also makes creation immediate when a store delays announcements.
+            if observation != nil { await reconcile() }
         } catch {
             focusOnOpen.remove(sticky.id)
+            sessionIDs.remove(sticky.id)
             throw error
         }
     }
 
-    /// `addSticky()`, for a menu command: a failure is told in an alert.
-    public func newSticky() {
+    public func newSticky(color: StickyColor? = nil, sessionOnly: Bool = false) {
         Task {
-            do {
-                try await addSticky()
-            } catch {
-                Self.alert("Could not create a sticky", error.localizedDescription)
-            }
+            do { try await addSticky(color: color, sessionOnly: sessionOnly) }
+            catch { report(String(localized: "Could not create a sticky", bundle: .module), error) }
         }
     }
 
-    /// Brings the app and every sticky in front of other apps' windows, oldest
-    /// first, so the newest ends on top with the keyboard.
+    public func newStickyInColor() { showColorPickerHandler?() }
+    public func showSettings() { showSettingsHandler?() }
+    public func toggleActiveFloating() { activeModel?.floatsOnTop.toggle() }
+    public func toggleActiveCollapse() { activeModel?.toggleCollapsed() }
+    public func toggleActiveAllSpaces() { activeModel?.appearsOnAllSpaces.toggle() }
+    public func copyActiveText() { activeModel?.copyText() }
+    public func sendActiveToNotes() { activeModel?.sendToNotes() }
+    public func setActiveColor(_ color: StickyColor) { activeModel?.color = color }
+    public func closeActive() { activeModel?.requestClose() }
+
+    public func showSticky(_ id: UUID) {
+        controllers[id]?.show(takingKeyboard: true)
+    }
+
     public func showAll() {
         NSApplication.shared.activate()
         let oldestFirst = controllers.values.sorted {
             $0.model.snapshot.createdAt < $1.model.snapshot.createdAt
         }
-        for controller in oldestFirst.dropLast() {
-            controller.show(takingKeyboard: false)
-        }
+        for controller in oldestFirst.dropLast() { controller.show(takingKeyboard: false) }
         oldestFirst.last?.show(takingKeyboard: true)
     }
 
-    private func reconcile() async {
-        guard let store else { return }
-        let stored: [Sticky]
-        let present: Set<UUID>
-        do {
-            stored = try await store.stickies()
-            present = try await store.existingIdentifiers()
-        } catch {
-            Self.logger.error("Could not read the stickies: \(error.localizedDescription, privacy: .public)")
-            return
-        }
-
-        // Once the store agrees a sticky is gone, it no longer needs remembering.
-        closedHere.formIntersection(present)
-
-        let plan = StickyReconciliation(
-            stored: stored.map(\.id),
-            present: present,
-            open: Array(controllers.keys)
-        )
-        for id in plan.toClose {
-            controllers[id]?.closeNow()
-        }
-        for sticky in stored where plan.toOpen.contains(sticky.id) && !closedHere.contains(sticky.id) {
-            open(sticky, store: store)
+    public func closeAll() {
+        let models = controllers.values.map(\.model)
+        Task {
+            for model in models { await model.requestClose().value }
+            await refreshRecentlyDeleted()
         }
     }
 
-    /// Only a sticky made here takes the keyboard. One that comes back at
-    /// launch, or arrives from another process, is shown in front without
-    /// pulling focus from whatever the person is doing.
-    private func open(_ sticky: Sticky, store: any StickyStore) {
+    /// Share one readable collection through the focused window's native
+    /// Notes service. The original notes remain open and unchanged.
+    public func exportAllToNotes() {
+        let ordered = controllers.values.sorted {
+            $0.model.snapshot.createdAt < $1.model.snapshot.createdAt
+        }
+        let text = ordered.map(\.model.text)
+            .filter { !$0.allSatisfy(\.isWhitespace) }
+            .joined(separator: "\n\n────────\n\n")
+        guard !text.isEmpty, let controller = activeStickyID.flatMap({ controllers[$0] }) ?? ordered.last else { return }
+        controller.shareCollection(text)
+    }
+
+    public func refreshRecentlyDeleted() async {
+        guard let recoverable = store as? any RecentlyDeletedStickyStore else {
+            recentlyDeleted = []
+            return
+        }
+        do {
+            try await recoverable.purgeExpired(now: Date())
+            recentlyDeleted = try await recoverable.recentlyDeleted()
+        } catch {
+            lastError = String(format: String(localized: "Could not read Recently Deleted: %@", bundle: .module), error.localizedDescription)
+            Self.logger.error("\(self.lastError ?? "", privacy: .public)")
+        }
+    }
+
+    public func restoreSticky(_ id: UUID) {
+        Task {
+            guard let recoverable = store as? any RecentlyDeletedStickyStore else { return }
+            focusOnOpen.insert(id)
+            closedHere.remove(id)
+            do {
+                if try await recoverable.restore(id: id) == nil { focusOnOpen.remove(id) }
+                await reconcile()
+            } catch {
+                focusOnOpen.remove(id)
+                report(String(localized: "Could not restore this sticky", bundle: .module), error)
+            }
+        }
+    }
+
+    public func setGlobalShortcutEnabled(_ enabled: Bool) throws {
+        guard enabled != globalShortcutEnabled else { return }
+        if enabled {
+            shortcut = try StickyGlobalShortcut { [weak self] in self?.newSticky() }
+        } else {
+            shortcut = nil
+        }
+        globalShortcutEnabled = enabled
+        defaults.set(enabled, forKey: "globalShortcutEnabled")
+    }
+
+    private func reconcile() async {
+        let session = await sessionStore.stickies()
+        var stored = session
+        var present = Set(session.map(\.id))
+        if let store {
+            do {
+                let persistent = try await store.stickies()
+                let persistentIDs = try await store.existingIdentifiers()
+                stored += persistent
+                present.formUnion(persistentIDs)
+            } catch {
+                // Disk availability must not prevent an in-memory capture.
+                // Existing persistent editors stay open until absence is known.
+                present.formUnion(controllers.keys.filter { !sessionIDs.contains($0) })
+                lastError = String(format: String(localized: "Could not read the stickies: %@", bundle: .module), error.localizedDescription)
+                Self.logger.error("\(self.lastError ?? "", privacy: .public)")
+            }
+        }
+        stored.sort {
+            $0.createdAt == $1.createdAt ? $0.id.uuidString < $1.id.uuidString : $0.createdAt < $1.createdAt
+        }
+        closedHere.formIntersection(present)
+        let plan = StickyReconciliation(stored: stored.map(\.id), present: present, open: Array(controllers.keys))
+        for id in plan.toClose { controllers[id]?.closeNow() }
+        for sticky in stored where plan.toOpen.contains(sticky.id) && !closedHere.contains(sticky.id) {
+            guard controllers[sticky.id] == nil else { continue }
+            if sessionIDs.contains(sticky.id) {
+                open(sticky, store: sessionStore, sessionOnly: true)
+            } else if let store {
+                open(sticky, store: store, sessionOnly: false)
+            }
+        }
+        updateOpenStickies()
+        await refreshRecentlyDeleted()
+    }
+
+    private func open(_ sticky: Sticky, store: any StickyStore, sessionOnly: Bool) {
         let takesKeyboard = focusOnOpen.remove(sticky.id) != nil
         let controller = StickyWindowController(
-            sticky: sticky,
-            store: store,
-            cascadeSlot: controllers.count,
-            startsFocused: takesKeyboard,
+            sticky: sticky, store: store, cascadeSlot: controllers.count,
+            startsFocused: takesKeyboard, isSessionOnly: sessionOnly,
+            onActivated: { [weak self] id in self?.stickyDidBecomeKey(id) },
+            onDeactivated: { [weak self] id in self?.stickyDidResignKey(id) },
             onClosed: { [weak self] id in self?.windowClosed(id) }
         )
         controllers[sticky.id] = controller
+        updateOpenStickies()
         controller.show(takingKeyboard: takesKeyboard)
+    }
+
+    func stickyDidBecomeKey(_ id: UUID) { activeStickyID = id }
+
+    func stickyDidResignKey(_ id: UUID) {
+        guard activeStickyID == id else { return }
+        activeStickyID = nil
     }
 
     private func windowClosed(_ id: UUID) {
         controllers[id] = nil
-        // A window that closed while its sticky is still stored was closed by
-        // the person; keep it from being reopened by a reading that predates
-        // the delete.
         closedHere.insert(id)
+        sessionIDs.remove(id)
+        if activeStickyID == id { activeStickyID = nil }
+        updateOpenStickies()
+        Task { await refreshRecentlyDeleted() }
     }
 
-    /// Writes every pending edit and returns when the writes have finished.
+    private func updateOpenStickies() {
+        openStickies = controllers.values.map(\.model.snapshot).sorted { $0.createdAt < $1.createdAt }
+    }
+
     public func flushAll() async {
         let writes = controllers.values.map { $0.model.flush() }
         for write in writes { await write.value }
     }
 
-    /// `flushAll()`, but never for longer than `ceiling`: a quit waits for the
-    /// text to be safe, not for a stuck disk.
     public func flushAll(within ceiling: Duration) async {
         let gate = ResumeOnce()
         await withCheckedContinuation { continuation in
             gate.continuation = continuation
-            Task {
-                await flushAll()
-                gate.resume()
-            }
-            Task {
-                try? await Task.sleep(for: ceiling)
-                gate.resume()
-            }
+            Task { await flushAll(); gate.resume() }
+            Task { try? await Task.sleep(for: ceiling); gate.resume() }
         }
     }
 
-    /// Whether any sticky window is open, so a quit knows if it has anything
-    /// to wait for.
-    public var hasOpenStickies: Bool { !controllers.isEmpty }
-
-    private static func alert(_ title: String, _ detail: String) {
+    private func report(_ title: String, _ error: Error) {
+        lastError = error.localizedDescription
         let alert = NSAlert()
         alert.messageText = title
-        alert.informativeText = detail
+        alert.informativeText = error.localizedDescription
         alert.alertStyle = .warning
         alert.runModal()
     }
 }
 
-/// Resumes a continuation the first time it is asked to, and never again.
 @MainActor
 private final class ResumeOnce {
     var continuation: CheckedContinuation<Void, Never>?
-
-    func resume() {
-        continuation?.resume()
-        continuation = nil
-    }
+    func resume() { continuation?.resume(); continuation = nil }
 }

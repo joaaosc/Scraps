@@ -14,7 +14,7 @@ public final class StickyGlassPanel: NSPanel {
     public init(contentRect: NSRect) {
         super.init(
             contentRect: contentRect,
-            styleMask: [.titled, .closable, .resizable, .fullSizeContentView],
+            styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
             backing: .buffered,
             defer: false
         )
@@ -35,4 +35,5 @@ public final class StickyGlassPanel: NSPanel {
     /// A titled panel can already be key. Stated explicitly because the panel
     /// is where the person types and must never silently lose the keyboard.
     public override var canBecomeKey: Bool { true }
+    public override var canBecomeMain: Bool { true }
 }

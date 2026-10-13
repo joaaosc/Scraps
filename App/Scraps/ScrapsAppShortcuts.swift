@@ -1,8 +1,8 @@
 import AppIntents
 import StickyIntents
 
-/// What Spotlight lists after the app's name and Tab, and what Siri and
-/// Shortcuts offer without any setup.
+/// Siri and Shortcuts operations. The app-scoped Spotlight list is provided
+/// separately by the four indexed action entities.
 ///
 /// Declared in the app target on purpose: intents travel through
 /// `StickyIntentsPackage`, but the metadata processor only extracts App

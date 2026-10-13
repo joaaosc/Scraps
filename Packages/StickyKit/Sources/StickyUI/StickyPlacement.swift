@@ -6,8 +6,22 @@ import StickyDomain
 /// Pure geometry, so the cascade and the "was left on a screen that is gone"
 /// rule can be tested without a display.
 enum StickyPlacement {
-    static let defaultSize = CGSize(width: 260, height: 200)
-    static let minimumSize = CGSize(width: 180, height: 120)
+    static let defaultSize = CGSize(width: 300, height: 240)
+    static let minimumSize = CGSize(width: 220, height: 160)
+
+    static let collapsedHeight: CGFloat = 40
+
+    /// Folding and unfolding keep the header's top edge in the same place.
+    static func collapsedFrame(expanded: CGRect) -> CGRect {
+        CGRect(x: expanded.minX, y: expanded.maxY - collapsedHeight,
+               width: expanded.width, height: collapsedHeight)
+    }
+
+    /// A folded note can move or change width without forgetting its body.
+    static func expandedFrame(afterMovingCollapsed collapsed: CGRect, previousExpanded: CGRect) -> CGRect {
+        CGRect(x: collapsed.minX, y: collapsed.maxY - previousExpanded.height,
+               width: max(collapsed.width, minimumSize.width), height: previousExpanded.height)
+    }
 
     private static let cascadeStep: CGFloat = 24
     private static let cascadeSlots = 10

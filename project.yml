@@ -1,25 +1,19 @@
 name: Scraps
-
 options:
   bundleIdPrefix: com.joaocosta
   createIntermediateGroups: true
   developmentLanguage: en
   deploymentTarget:
     macOS: "27.0"
-
+    iOS: "27.0"
 configs:
   Debug: debug
   Release: release
-
-# Version settings come from an xcconfig, not from here. See
-# Config/Version.xcconfig.
 configFiles:
   Debug: Config/Version.xcconfig
   Release: Config/Version.xcconfig
-
 settings:
   base:
-    MACOSX_DEPLOYMENT_TARGET: "27.0"
     SWIFT_VERSION: "6.0"
     SWIFT_STRICT_CONCURRENCY: complete
     SWIFT_APPROACHABLE_CONCURRENCY: YES
@@ -27,16 +21,12 @@ settings:
     SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY: YES
   configs:
     Release:
-      # A secure timestamp is required for notarization; without it the upload
-      # is accepted and then rejected.
       OTHER_CODE_SIGN_FLAGS: --timestamp
       CODE_SIGN_INJECT_BASE_ENTITLEMENTS: NO
       SWIFT_COMPILATION_MODE: wholemodule
-
 packages:
   StickyKit:
     path: Packages/StickyKit
-
 targets:
   Scraps:
     type: application
@@ -44,6 +34,7 @@ targets:
     deploymentTarget: "27.0"
     sources:
       - path: App/Scraps
+      - path: App/Shared/Assets.xcassets
     info:
       path: App/Scraps/Info.plist
       properties:
@@ -51,27 +42,74 @@ targets:
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         LSApplicationCategoryType: public.app-category.productivity
+        CFBundleLocalizations: [en, pt-BR]
+        ITSAppUsesNonExemptEncryption: false
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.joaocosta.Scraps
         PRODUCT_NAME: Scraps
         CODE_SIGN_STYLE: Automatic
-        # Declared here so regenerating the project keeps it.
         "CODE_SIGN_IDENTITY[sdk=macosx*]": Apple Development
         DEVELOPMENT_TEAM: 33FPG9442W
         CODE_SIGN_ENTITLEMENTS: App/Scraps/Scraps.entitlements
-        # The only entitlement the app has. Stickies live in the app's own
-        # container and reach Notes through the system's sharing service.
         ENABLE_APP_SANDBOX: YES
         ENABLE_HARDENED_RUNTIME: YES
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        ARCHS: arm64
     dependencies:
+      - package: StickyKit
+        product: StickyDomain
+      - package: StickyKit
+        product: StickyEditor
       - package: StickyKit
         product: StickyIntents
       - package: StickyKit
         product: StickyStorage
       - package: StickyKit
         product: StickyUI
-
+  ScrapsMobile:
+    type: application
+    platform: iOS
+    deploymentTarget: "27.0"
+    sources:
+      - path: App/ScrapsMobile
+      - path: App/Shared/Assets.xcassets
+      - path: App/Scraps/PrivacyInfo.xcprivacy
+    info:
+      path: App/ScrapsMobile/Info.plist
+      properties:
+        CFBundleDisplayName: Scraps
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        CFBundleLocalizations: [en, pt-BR]
+        ITSAppUsesNonExemptEncryption: false
+        UILaunchScreen: {}
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+          - UIInterfaceOrientationPortraitUpsideDown
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.joaocosta.Scraps
+        PRODUCT_NAME: Scraps
+        CODE_SIGN_STYLE: Automatic
+        DEVELOPMENT_TEAM: 33FPG9442W
+        TARGETED_DEVICE_FAMILY: "1,2"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+    dependencies:
+      - package: StickyKit
+        product: StickyDomain
+      - package: StickyKit
+        product: StickyStorage
+      - package: StickyKit
+        product: StickyMobileUI
+      - package: StickyKit
+        product: StickyIntents
 schemes:
   Scraps:
     build:
@@ -79,11 +117,25 @@ schemes:
         Scraps: all
     run:
       config: Debug
-    # The package's tests run from the app's scheme, so one command covers
-    # both the build of the app and the rules it is made of.
     test:
       config: Debug
       targets:
         - package: StickyKit/StickyDomainTests
         - package: StickyKit/StickyStorageTests
+        - package: StickyKit/StickyEditorTests
         - package: StickyKit/StickyUITests
+        - package: StickyKit/StickyIntentsTests
+  ScrapsMobile:
+    build:
+      targets:
+        ScrapsMobile: all
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - package: StickyKit/StickyDomainTests
+        - package: StickyKit/StickyStorageTests
+        - package: StickyKit/StickyEditorTests
+        - package: StickyKit/StickyIntentsTests
+        - package: StickyKit/StickyMobileUITests

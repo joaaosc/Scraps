@@ -1,4 +1,6 @@
+#if canImport(Darwin)
 import CoreFoundation
+#endif
 import Foundation
 import Synchronization
 
@@ -17,6 +19,7 @@ public enum StickyChanges {
 
     /// Tells the other processes sharing the store that it changed.
     static func notifyOtherProcesses() {
+        #if canImport(Darwin)
         CFNotificationCenterPostNotification(
             CFNotificationCenterGetDarwinNotifyCenter(),
             CFNotificationName(rawValue: StickyKitIdentity.changesDarwinName as CFString),
@@ -24,6 +27,7 @@ public enum StickyChanges {
             nil,
             true
         )
+        #endif
     }
 
     /// Tells every stream in this process that the store changed.
@@ -36,11 +40,12 @@ public enum StickyChanges {
     /// Observation ends when the stream's consumer stops.
     public static func stream() -> AsyncStream<Void> {
         AsyncStream(bufferingPolicy: .bufferingNewest(1)) { continuation in
+            let localID = UUID()
+            localObservers.withLock { $0[localID] = continuation }
+            #if canImport(Darwin)
             let relay = Relay(continuation: continuation)
             let name = StickyKitIdentity.changesDarwinName
             let center = CFNotificationCenterGetDarwinNotifyCenter()
-            let localID = UUID()
-            localObservers.withLock { $0[localID] = continuation }
 
             CFNotificationCenterAddObserver(
                 center,
@@ -54,9 +59,11 @@ public enum StickyChanges {
                 nil,
                 .deliverImmediately
             )
+            #endif
 
             continuation.onTermination = { _ in
                 localObservers.withLock { _ = $0.removeValue(forKey: localID) }
+                #if canImport(Darwin)
                 let observer = Unmanaged.passUnretained(relay).toOpaque()
                 CFNotificationCenterRemoveObserver(
                     CFNotificationCenterGetDarwinNotifyCenter(),
@@ -65,6 +72,7 @@ public enum StickyChanges {
                     nil
                 )
                 Unmanaged<Relay>.fromOpaque(observer).release()
+                #endif
             }
         }
     }

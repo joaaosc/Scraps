@@ -267,4 +267,163 @@ struct FileStickyStoreTests {
             )
         }
     }
+
+    @Test("Version-one documents migrate and the next save writes version two")
+    func migratesVersionOne() async throws {
+        let (store, directory) = try makeStore()
+        defer { cleanUp(directory) }
+        let id = UUID()
+        let fileURL = directory.appending(path: "\(id.uuidString).json")
+        let json = """
+        {"version":1,"sticky":{"id":"\(id.uuidString)","text":"Olá 😀\\nKeep this",
+        "createdAt":"2027-01-15T08:00:00Z","updatedAt":"2027-01-15T08:01:00Z",
+        "frame":{"x":12,"y":24,"width":280,"height":210},"floatsOnTop":false,"color":"blue"}}
+        """
+        try Data(json.utf8).write(to: fileURL)
+
+        let migrated = try #require(try await store.stickies().first)
+        #expect(migrated.text == "Olá 😀\nKeep this")
+        #expect(migrated.color == .blue)
+        #expect(migrated.frame == StickyFrame(x: 12, y: 24, width: 280, height: 210))
+        #expect(!migrated.floatsOnTop)
+        #expect(migrated.updatedAt.timeIntervalSince(migrated.createdAt) == 60)
+        #expect(migrated.richText == nil)
+        #expect(!migrated.isCollapsed)
+
+        try await store.save(migrated)
+        let document = try #require(JSONSerialization.jsonObject(with: Data(contentsOf: fileURL)) as? [String: Any])
+        #expect(document["version"] as? Int == 2)
+        let reopened = try FileStickyStore(directoryURL: directory, announcesChanges: false)
+        #expect(try await reopened.stickies() == [migrated])
+    }
+
+    @Test("Trash hides a note from active reconciliation and restores every field")
+    func trashAndRestore() async throws {
+        let (store, directory) = try makeStore()
+        defer { cleanUp(directory) }
+        let sticky = Sticky(
+            text: "Idea 😀\nDetails", createdAt: instant,
+            frame: StickyFrame(x: 25, y: 50, width: 260, height: 180),
+            floatsOnTop: false, color: .pink, isCollapsed: true,
+            appearsOnAllSpaces: true,
+            richText: StickyRichText(runs: [StickyTextRun(location: 0, length: 4, bold: true)])
+        )
+        try await store.save(sticky)
+        let deletion = instant.addingTimeInterval(50)
+
+        try await store.moveToTrash(sticky, at: deletion)
+        #expect(try await store.stickies().isEmpty)
+        #expect(try await store.existingIdentifiers().isEmpty)
+        let trashed = try #require(try await store.recentlyDeleted().first)
+        #expect(trashed.deletedAt == deletion)
+        #expect(trashed.text == sticky.text)
+        #expect(trashed.richText == sticky.richText)
+        #expect(try files(in: directory) == ["\(sticky.id.uuidString).json"])
+
+        let reopened = try FileStickyStore(directoryURL: directory, announcesChanges: false)
+        #expect(try await reopened.recentlyDeleted() == [trashed])
+        #expect(try await reopened.restore(id: sticky.id) == sticky)
+        #expect(try await reopened.stickies() == [sticky])
+        #expect(try await reopened.recentlyDeleted().isEmpty)
+    }
+
+    @Test("A delayed autosave cannot resurrect a trashed note")
+    func staleSavePreservesTrash() async throws {
+        let (store, directory) = try makeStore()
+        defer { cleanUp(directory) }
+        let sticky = Sticky(text: "Keep me", createdAt: instant)
+        try await store.save(sticky)
+        try await store.moveToTrash(sticky, at: instant)
+
+        let error = await #expect(throws: FileStickyStoreError.self) {
+            try await store.save(sticky)
+        }
+
+        #expect(error == .recentlyDeleted(sticky.id))
+        #expect(try await store.stickies().isEmpty)
+        #expect(try await store.recentlyDeleted().first?.text == "Keep me")
+    }
+
+    @Test("A full store refuses restoration without losing the recovery copy")
+    func restorePreservesTrashAtCap() async throws {
+        let (store, directory) = try makeStore(limit: 1)
+        defer { cleanUp(directory) }
+        let recoverable = Sticky(text: "Recoverable", createdAt: instant)
+        let active = Sticky(text: "Active", createdAt: instant.addingTimeInterval(1))
+        try await store.save(recoverable)
+        try await store.moveToTrash(recoverable, at: instant)
+        try await store.save(active)
+
+        let error = await #expect(throws: FileStickyStoreError.self) {
+            try await store.restore(id: recoverable.id)
+        }
+        #expect(error == .limitReached(1))
+        #expect(try await store.stickies() == [active])
+        #expect(try await store.recentlyDeleted().first?.text == "Recoverable")
+
+        try await store.delete(id: active.id)
+        #expect(try await store.restore(id: recoverable.id) == recoverable)
+    }
+
+    @Test("Expiry removes only tombstones at least thirty days old, preserving unreadable files")
+    func trashExpiresSafely() async throws {
+        let (store, directory) = try makeStore()
+        defer { cleanUp(directory) }
+        let expired = Sticky(text: "Expired", createdAt: instant)
+        let recent = Sticky(text: "Recent", createdAt: instant)
+        let active = Sticky(text: "Active", createdAt: instant)
+        try await store.save(expired)
+        try await store.save(recent)
+        try await store.save(active)
+        let now = instant.addingTimeInterval(FileStickyStore.trashRetentionInterval)
+        try await store.moveToTrash(expired, at: instant)
+        try await store.moveToTrash(recent, at: instant.addingTimeInterval(1))
+        let unreadableID = UUID()
+        let unreadable = directory.appending(path: "\(unreadableID.uuidString).json")
+        try Data("unreadable".utf8).write(to: unreadable)
+
+        try await store.purgeExpired(now: now)
+
+        #expect(try await store.stickies() == [active])
+        #expect(try await store.recentlyDeleted().map(\.id) == [recent.id])
+        #expect(try await store.existingIdentifiers() == Set([active.id, unreadableID]))
+        #expect(FileManager.default.fileExists(atPath: unreadable.path))
+        #expect(!FileManager.default.fileExists(atPath: directory.appending(path: "\(expired.id.uuidString).json").path))
+    }
+
+    @Test("Unreadable contents are preserved even when a stale caller asks to delete")
+    func unreadableDeletePreservesFile() async throws {
+        let (store, directory) = try makeStore()
+        defer { cleanUp(directory) }
+        let id = UUID()
+        let fileURL = directory.appending(path: "\(id.uuidString).json")
+        let contents = Data("not json".utf8)
+        try contents.write(to: fileURL)
+
+        await #expect(throws: (any Error).self) {
+            try await store.delete(id: id)
+        }
+        #expect(try Data(contentsOf: fileURL) == contents)
+    }
+
+    @Test("A mismatched document identifier is preserved as unreadable")
+    func mismatchedIdentifierIsPreserved() async throws {
+        let (store, directory) = try makeStore()
+        defer { cleanUp(directory) }
+        let sticky = Sticky(text: "Keep this data", createdAt: instant)
+        try await store.save(sticky)
+        let original = directory.appending(path: "\(sticky.id.uuidString).json")
+        let filenameID = UUID()
+        let mismatched = directory.appending(path: "\(filenameID.uuidString).json")
+        try FileManager.default.moveItem(at: original, to: mismatched)
+        let contents = try Data(contentsOf: mismatched)
+
+        #expect(try await store.stickies().isEmpty)
+        #expect(try await store.existingIdentifiers() == Set([filenameID]))
+        try await store.purgeExpired(now: instant.addingTimeInterval(10_000_000))
+        await #expect(throws: (any Error).self) {
+            try await store.delete(id: filenameID)
+        }
+        #expect(try Data(contentsOf: mismatched) == contents)
+    }
 }

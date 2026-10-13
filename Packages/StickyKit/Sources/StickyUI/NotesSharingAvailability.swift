@@ -32,14 +32,16 @@ enum NotesSharingAvailability {
     /// Why sending is not possible right now, or nil when it is.
     static func unavailableReason(forText text: String) -> String? {
         text.allSatisfy(\.isWhitespace)
-            ? "Type something first, then send it to Notes."
+            ? String(localized: "Type something first, then send it to Notes.", bundle: .module)
             : nil
     }
 
     static func outcome(for error: Error, route: Route) -> Outcome {
         if isUserCancellation(error) { return .cancelled }
-        let subject = route == .notes ? "send this sticky to Notes" : "share this sticky"
-        return .failed("Could not \(subject): \(error.localizedDescription)")
+        let format = route == .notes
+            ? String(localized: "Could not send this sticky to Notes: %@", bundle: .module)
+            : String(localized: "Could not share this sticky: %@", bundle: .module)
+        return .failed(String(format: format, error.localizedDescription))
     }
 
     static func isUserCancellation(_ error: Error) -> Bool {

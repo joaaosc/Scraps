@@ -1,11 +1,11 @@
 import AppIntents
-import StickyUI
+import Foundation
 
 /// Brings every sticky in front of whatever is covering it.
 public struct ShowStickiesIntent: AppIntent {
-    public static let title: LocalizedStringResource = "Show All Stickies"
+    public static let title = LocalizedStringResource("Show All Stickies", bundle: .atURL(Bundle.module.bundleURL))
     public static let description = IntentDescription(
-        "Brings every sticky to the front."
+        LocalizedStringResource("Brings every sticky to the front.", bundle: .atURL(Bundle.module.bundleURL))
     )
     public static let supportedModes: IntentModes = [.foreground(.immediate)]
 
@@ -13,7 +13,7 @@ public struct ShowStickiesIntent: AppIntent {
 
     @MainActor
     public func perform() async throws -> some IntentResult {
-        StickyBoard.shared.showAll()
+        try await StickyActionRouter.showAll()
         return .result()
     }
 }

@@ -1,14 +1,27 @@
 import Foundation
 import StickyDomain
+#if canImport(OSLog)
 import OSLog
+#endif
 
 public enum FileStickyStoreError: Error, Equatable, LocalizedError, Sendable {
     case limitReached(Int)
+    case recentlyDeleted(UUID)
 
     public var errorDescription: String? {
         switch self {
         case let .limitReached(limit):
-            "Up to \(limit) stickies can be kept and all of them are open. Close a sticky to make room."
+            String(
+                format: NSLocalizedString(
+                    "Up to %ld stickies can be kept and all of them are open. Close a sticky to make room.",
+                    bundle: .module, comment: "Active sticky limit"
+                ), limit
+            )
+        case .recentlyDeleted:
+            NSLocalizedString(
+                "This sticky is in Recently Deleted. Restore it before editing it.",
+                bundle: .module, comment: "Late edit of a deleted note"
+            )
         }
     }
 }
@@ -24,7 +37,7 @@ public enum FileStickyStoreError: Error, Equatable, LocalizedError, Sendable {
 /// lost text. The cap is a hard one. Reaching it fails the creation with a
 /// message instead of evicting anything, because a sticky holds text that is
 /// not kept anywhere else.
-public actor FileStickyStore: StickyStore {
+public actor FileStickyStore: RecentlyDeletedStickyStore {
     /// The most stickies that can exist at once.
     public static let maximumCount = 100
 
@@ -33,13 +46,15 @@ public actor FileStickyStore: StickyStore {
         let sticky: Sticky
     }
 
-    private static let currentVersion = 1
+    private static let currentVersion = 2
+    #if canImport(OSLog)
     private static let logger = Logger(
         subsystem: StickyKitIdentity.bundleIdentifier,
         category: "Stickies"
     )
+    #endif
 
-    public let directoryURL: URL
+    public nonisolated let directoryURL: URL
     private let limit: Int
     private let announcesChanges: Bool
 
@@ -66,25 +81,31 @@ public actor FileStickyStore: StickyStore {
 
     public func stickies() throws -> [Sticky] {
         try Self.readAll(in: directoryURL)
+            .filter { $0.deletedAt == nil }
             .sorted {
                 if $0.createdAt != $1.createdAt { return $0.createdAt < $1.createdAt }
                 return $0.id.uuidString < $1.id.uuidString
             }
     }
 
-    /// Read from the file names alone, so a file that cannot be decoded still
-    /// counts as existing.
+    /// File names preserve unreadable identifiers; readable tombstones are
+    /// excluded so their windows close after a move to Recently Deleted.
     public func existingIdentifiers() async throws -> Set<UUID> {
         guard FileManager.default.fileExists(atPath: directoryURL.path) else { return [] }
         let files = try FileManager.default.contentsOfDirectory(
             at: directoryURL,
             includingPropertiesForKeys: nil
         )
-        return Set(
-            files
-                .filter { $0.pathExtension == "json" }
-                .compactMap { UUID(uuidString: $0.deletingPathExtension().lastPathComponent) }
-        )
+        return Set(files.compactMap { fileURL in
+            guard fileURL.pathExtension == "json",
+                  let id = UUID(uuidString: fileURL.deletingPathExtension().lastPathComponent)
+            else { return nil }
+            // Unknown or temporarily unreadable files still keep their windows.
+            if let sticky = try? Self.coordinatedRead(at: fileURL), sticky.deletedAt != nil {
+                return nil
+            }
+            return id
+        })
     }
 
     public func save(_ sticky: Sticky) throws {
@@ -99,14 +120,24 @@ public actor FileStickyStore: StickyStore {
         // person and must not use up room they cannot free. Two processes
         // creating at the same instant could overshoot by one, which is
         // harmless; the next creation is refused.
-        if !FileManager.default.fileExists(atPath: fileURL.path) {
-            let existing = try Self.readAll(in: directoryURL).count
+        let previous: Sticky? = FileManager.default.fileExists(atPath: fileURL.path)
+            ? try Self.coordinatedRead(at: fileURL) : nil
+        if sticky.deletedAt == nil, previous?.deletedAt != nil {
+            throw FileStickyStoreError.recentlyDeleted(sticky.id)
+        }
+        if sticky.deletedAt == nil, previous == nil {
+            let existing = try Self.readAll(in: directoryURL).filter { $0.deletedAt == nil }.count
             guard existing < limit else {
                 throw FileStickyStoreError.limitReached(limit)
             }
         }
 
         try Self.coordinatedWrite(at: fileURL) { coordinatedURL in
+            if sticky.deletedAt == nil,
+               FileManager.default.fileExists(atPath: coordinatedURL.path),
+               try Self.readDocument(at: coordinatedURL).deletedAt != nil {
+                throw FileStickyStoreError.recentlyDeleted(sticky.id)
+            }
             try Self.encode(sticky).write(to: coordinatedURL, options: .atomic)
         }
         announce()
@@ -115,10 +146,71 @@ public actor FileStickyStore: StickyStore {
     public func delete(id: UUID) throws {
         let fileURL = Self.fileURL(for: id, in: directoryURL)
         guard FileManager.default.fileExists(atPath: fileURL.path) else { return }
-        try Self.coordinatedWrite(at: fileURL) { coordinatedURL in
+        try Self.coordinatedWrite(at: fileURL, deleting: true) { coordinatedURL in
+            // An unsupported document must never be discarded as a side effect
+            // of a stale window closing or an expiry pass.
+            _ = try Self.readDocument(at: coordinatedURL)
             try FileManager.default.removeItem(at: coordinatedURL)
         }
         announce()
+    }
+
+    public func recentlyDeleted() throws -> [Sticky] {
+        try Self.readAll(in: directoryURL)
+            .filter { $0.deletedAt != nil }
+            .sorted {
+                if $0.deletedAt != $1.deletedAt { return $0.deletedAt! > $1.deletedAt! }
+                return $0.id.uuidString < $1.id.uuidString
+            }
+    }
+
+    /// A tombstone lives in the same atomic document as its contents. There is
+    /// no remove-then-write interval in which a failure could lose the note.
+    public func moveToTrash(_ sticky: Sticky, at date: Date) throws {
+        let fileURL = Self.fileURL(for: sticky.id, in: directoryURL)
+        if FileManager.default.fileExists(atPath: fileURL.path),
+           try Self.coordinatedRead(at: fileURL).deletedAt != nil { return }
+        var trashed = sticky
+        trashed.deletedAt = date
+        try save(trashed)
+    }
+
+    @discardableResult
+    public func restore(id: UUID) throws -> Sticky? {
+        let fileURL = Self.fileURL(for: id, in: directoryURL)
+        guard FileManager.default.fileExists(atPath: fileURL.path) else { return nil }
+        var sticky = try Self.coordinatedRead(at: fileURL)
+        guard sticky.deletedAt != nil else { return sticky }
+        let activeCount = try Self.readAll(in: directoryURL).filter { $0.deletedAt == nil }.count
+        guard activeCount < limit else { throw FileStickyStoreError.limitReached(limit) }
+        try Self.coordinatedWrite(at: fileURL) { coordinatedURL in
+            // Preserve a concurrent edit or restoration, rather than writing
+            // the snapshot read before coordination began.
+            sticky = try Self.readDocument(at: coordinatedURL)
+            sticky.deletedAt = nil
+            try Self.encode(sticky).write(to: coordinatedURL, options: .atomic)
+        }
+        announce()
+        return sticky
+    }
+
+    public func purgeExpired(now: Date) throws {
+        for sticky in try recentlyDeleted() {
+            guard let deletedAt = sticky.deletedAt,
+                  now.timeIntervalSince(deletedAt) >= Self.trashRetentionInterval else { continue }
+            let fileURL = Self.fileURL(for: sticky.id, in: directoryURL)
+            guard FileManager.default.fileExists(atPath: fileURL.path) else { continue }
+            var removed = false
+            try Self.coordinatedWrite(at: fileURL, deleting: true) { coordinatedURL in
+                let current = try Self.readDocument(at: coordinatedURL)
+                guard let currentDeletion = current.deletedAt,
+                      now.timeIntervalSince(currentDeletion) >= Self.trashRetentionInterval
+                else { return }
+                try FileManager.default.removeItem(at: coordinatedURL)
+                removed = true
+            }
+            if removed { announce() }
+        }
     }
 
     /// Inside the sandbox, Application Support is the app's own container, so
@@ -161,15 +253,18 @@ public actor FileStickyStore: StickyStore {
                 do {
                     return try coordinatedRead(at: fileURL)
                 } catch {
+                    #if canImport(OSLog)
                     logger.error(
                         "Skipped an unreadable sticky file \(fileURL.lastPathComponent, privacy: .public): \(error.localizedDescription, privacy: .public)"
                     )
+                    #endif
                     return nil
                 }
             }
     }
 
     private static func coordinatedRead(at fileURL: URL) throws -> Sticky {
+        #if canImport(Darwin)
         var coordinationError: NSError?
         var operationResult: Result<Sticky, Error>?
         NSFileCoordinator().coordinate(
@@ -178,8 +273,7 @@ public actor FileStickyStore: StickyStore {
             error: &coordinationError
         ) { coordinatedURL in
             operationResult = Result {
-                let data = try Data(contentsOf: coordinatedURL)
-                return try decode(data)
+                try readDocument(at: coordinatedURL)
             }
         }
         if let coordinationError {
@@ -189,17 +283,22 @@ public actor FileStickyStore: StickyStore {
             throw CocoaError(.fileReadUnknown)
         }
         return try operationResult.get()
+        #else
+        return try readDocument(at: fileURL)
+        #endif
     }
 
     private static func coordinatedWrite(
         at fileURL: URL,
+        deleting: Bool = false,
         _ body: (URL) throws -> Void
     ) throws {
+        #if canImport(Darwin)
         var coordinationError: NSError?
         var operationResult: Result<Void, Error>?
         NSFileCoordinator().coordinate(
             writingItemAt: fileURL,
-            options: [],
+            options: deleting ? [.forDeleting] : [],
             error: &coordinationError
         ) { coordinatedURL in
             operationResult = Result { try body(coordinatedURL) }
@@ -211,6 +310,9 @@ public actor FileStickyStore: StickyStore {
             throw CocoaError(.fileWriteUnknown)
         }
         try operationResult.get()
+        #else
+        try body(fileURL)
+        #endif
     }
 
     private static func encode(_ sticky: Sticky) throws -> Data {
@@ -220,11 +322,21 @@ public actor FileStickyStore: StickyStore {
         return try encoder.encode(Document(version: currentVersion, sticky: sticky))
     }
 
+    private static func readDocument(at fileURL: URL) throws -> Sticky {
+        let sticky = try decode(Data(contentsOf: fileURL))
+        guard UUID(uuidString: fileURL.deletingPathExtension().lastPathComponent) == sticky.id else {
+            throw DecodingError.dataCorrupted(.init(
+                codingPath: [], debugDescription: "Sticky identifier does not match its document name"
+            ))
+        }
+        return sticky
+    }
+
     private static func decode(_ data: Data) throws -> Sticky {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
         let document = try decoder.decode(Document.self, from: data)
-        guard document.version == currentVersion else {
+        guard (1...currentVersion).contains(document.version) else {
             throw DecodingError.dataCorrupted(
                 .init(codingPath: [], debugDescription: "Unsupported sticky version \(document.version)")
             )

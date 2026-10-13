@@ -27,7 +27,8 @@ public final class StickyGlassHostingView<Content: View>: NSGlassEffectView {
 
     public init(
         rootView: Content,
-        cornerRadius: CGFloat = StickyGlassMetrics.cornerRadius
+        cornerRadius: CGFloat = StickyGlassMetrics.cornerRadius,
+        tintColor: NSColor? = nil
     ) {
         let controller = NSHostingController(rootView: rootView)
         controller.sizingOptions = []
@@ -36,9 +37,7 @@ public final class StickyGlassHostingView<Content: View>: NSGlassEffectView {
 
         style = .regular
         self.cornerRadius = cornerRadius
-        // No tint: Liquid Glass has no colour of its own and takes it from
-        // what is behind it.
-        tintColor = nil
+        self.tintColor = tintColor
         contentView = controller.view
     }
 

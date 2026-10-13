@@ -66,9 +66,31 @@
             parallelizable = "NO">
             <BuildableReference
                BuildableIdentifier = "primary"
+               BlueprintIdentifier = "StickyEditorTests"
+               BuildableName = "StickyEditorTests"
+               BlueprintName = "StickyEditorTests"
+               ReferencedContainer = "container:Packages/StickyKit">
+            </BuildableReference>
+         </TestableReference>
+         <TestableReference
+            skipped = "NO"
+            parallelizable = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
                BlueprintIdentifier = "StickyUITests"
                BuildableName = "StickyUITests"
                BlueprintName = "StickyUITests"
+               ReferencedContainer = "container:Packages/StickyKit">
+            </BuildableReference>
+         </TestableReference>
+         <TestableReference
+            skipped = "NO"
+            parallelizable = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "StickyIntentsTests"
+               BuildableName = "StickyIntentsTests"
+               BlueprintName = "StickyIntentsTests"
                ReferencedContainer = "container:Packages/StickyKit">
             </BuildableReference>
          </TestableReference>

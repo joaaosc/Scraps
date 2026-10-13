@@ -8,19 +8,24 @@ import SwiftUI
 /// and `allowsWindowActivationEvents` is what lets the drag start while
 /// another app still holds activation.
 struct StickyWindowDragArea: ViewModifier {
+    let onDoubleClick: (() -> Void)?
+
     func body(content: Content) -> some View {
         content
             // Without a hit-testable shape the gesture only sees the glyphs,
             // not the empty run between them.
             .contentShape(.rect)
             .gesture(WindowDragGesture())
+            .simultaneousGesture(TapGesture(count: 2).onEnded {
+                onDoubleClick?()
+            })
             .allowsWindowActivationEvents(true)
     }
 }
 
 extension View {
     /// Lets this region drag the window it is in.
-    func stickyWindowDrag() -> some View {
-        modifier(StickyWindowDragArea())
+    func stickyWindowDrag(onDoubleClick: (() -> Void)? = nil) -> some View {
+        modifier(StickyWindowDragArea(onDoubleClick: onDoubleClick))
     }
 }

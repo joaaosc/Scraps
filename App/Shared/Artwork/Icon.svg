@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+<defs>
+<linearGradient id="canvas" x2="0" y2="1"><stop stop-color="#438C83"/><stop offset="1" stop-color="#22524F"/></linearGradient>
+<linearGradient id="paper" x2=".2" y2="1"><stop stop-color="#FFF8DC"/><stop offset="1" stop-color="#F3DE9B"/></linearGradient>
+<linearGradient id="fold" x2="1" y2="1"><stop stop-color="#E4C879"/><stop offset="1" stop-color="#FFF1C2"/></linearGradient>
+<filter id="shadow" x="-40%" y="-40%" width="180%" height="180%"><feDropShadow dx="0" dy="22" stdDeviation="24" flood-color="#102B28" flood-opacity=".28"/></filter>
+</defs>
+<rect width="1024" height="1024" rx="220" fill="url(#canvas)"/>
+<g filter="url(#shadow)">
+<rect x="246" y="244" width="546" height="556" rx="50" fill="#B8D8BF" transform="rotate(9 519 522)"/>
+<rect x="218" y="221" width="546" height="556" rx="50" fill="#E6B7B5" transform="rotate(-8 491 499)"/>
+<path d="M282 211H711Q753 211 753 253V620L598 775H282Q240 775 240 733V253Q240 211 282 211Z" fill="url(#paper)"/>
+<path d="M753 620L598 775V659Q598 620 637 620Z" fill="url(#fold)"/>
+</g>
+<g stroke="#6F765E" stroke-opacity=".48" stroke-width="22" stroke-linecap="round">
+<path d="M344 355H639"/><path d="M344 436H639"/><path d="M344 517H539"/>
+</g>
+</svg>

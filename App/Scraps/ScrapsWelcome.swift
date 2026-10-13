@@ -10,13 +10,15 @@ import StickyUI
 enum ScrapsWelcome {
     private static let shownKey = "hasShownWelcome"
 
-    static let text = """
+    static var text: String { String(localized: """
         Welcome to Scraps
 
         Press ⌘N for a new sticky, or type Scraps in Spotlight and press Tab.
 
-        Drag the bar at the bottom to move a sticky. Close it when you are done with it.
-        """
+        Drag the title bar to move a sticky. Double-click it to collapse the note.
+
+        Close a sticky when you are done. Restore it from Recently Deleted for 30 days.
+        """) }
 
     static func leaveOnFirstLaunch() {
         guard !UserDefaults.standard.bool(forKey: shownKey) else { return }

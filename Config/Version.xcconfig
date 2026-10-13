@@ -1,7 +1,3 @@
-// Version settings for every Scraps target.
-//
-// Kept here rather than in project.yml so the two numbers live in one place
-// that no project regeneration touches.
-
-MARKETING_VERSION = 0.1.0
-CURRENT_PROJECT_VERSION = 1
+// Shared version for the native Mac, iPhone and iPad applications.
+MARKETING_VERSION = 1.0.0
+CURRENT_PROJECT_VERSION = 2
