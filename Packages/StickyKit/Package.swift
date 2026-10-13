@@ -16,7 +16,7 @@ var targets: [Target] = [
 #if os(Linux)
 products += [.library(name: "StickyMobileUI", targets: ["StickyMobileUI"])]
 targets += [
-    .target(name: "StickyMobileUI", dependencies: ["StickyDomain", "StickyStorage"], exclude: ["MobileBackgroundSave.swift", "MobileNewColorView.swift", "MobileRecentlyDeletedView.swift", "MobileStickyCard.swift", "MobileStickyDetailView.swift", "MobileStickyRootView.swift", "MobileStickyRow.swift", "MobileStickySettingsView.swift", "MobileStickyShareDocument.swift", "Sticky+MobilePreview.swift", "StickyColor+MobileSurface.swift"], sources: ["MobileStickyLibrary.swift"], resources: [.process("Resources")]),
+    .target(name: "StickyMobileUI", dependencies: ["StickyDomain", "StickyStorage"], exclude: ["MobileBackgroundSave.swift", "MobileNewColorView.swift", "MobileRecentlyDeletedView.swift", "MobileStickyCard.swift", "MobileStickyDetailView.swift", "MobileStickyRootView.swift", "MobileStickyRow.swift", "MobileStickySettingsView.swift", "Sticky+MobilePreview.swift", "StickyColor+MobileSurface.swift"], sources: ["MobileStickyLibrary.swift"], resources: [.process("Resources")]),
     .testTarget(name: "StickyMobileUITests", dependencies: ["StickyDomain", "StickyStorage", "StickyMobileUI"]),
 ]
 #else

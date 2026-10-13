@@ -26,6 +26,7 @@ struct MobileStickyRow: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
+            if sticky.isPinned { Image(systemName: "star.fill").foregroundStyle(.secondary).accessibilityLabel(Text("Favorite", bundle: .module)) }
             if sessionOnly {
                 Image(systemName: "clock")
                     .foregroundStyle(.secondary)

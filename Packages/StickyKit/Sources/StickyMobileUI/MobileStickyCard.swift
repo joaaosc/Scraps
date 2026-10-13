@@ -17,10 +17,13 @@ struct MobileStickyCard: View {
                 .foregroundStyle(.secondary)
                 .lineLimit(5)
                 .frame(maxWidth: .infinity, alignment: .leading)
+            if !sticky.tags.isEmpty { Text(sticky.tags.map { "#" + $0 }.joined(separator: " ")).font(.caption).foregroundStyle(.secondary).lineLimit(1) }
             Spacer(minLength: 0)
             HStack {
                 Text(sticky.updatedAt, style: .date)
                 Spacer()
+                if sticky.isPinned { Image(systemName: "star.fill").accessibilityLabel(Text("Favorite", bundle: .module)) }
+                if sticky.conflictSourceID != nil { Image(systemName: "arrow.triangle.branch").accessibilityLabel(Text("Recovered Edit", bundle: .module)) }
                 if sessionOnly { Image(systemName: "clock") }
             }
             .font(.caption)

@@ -41,4 +41,16 @@ struct StickyFormattingTests {
         let changed = StickyListEditing.toggleCompletion(text: text, richText: nil, selection: NSRange(location: rows[0].location, length: 0))
         #expect(StickyChecklist.items(in: changed.text).map(\.completed) == [true, true, true])
     }
+    @Test("Collections keep archived notes separate and search Unicode tags")
+    func collections() {
+        let favorite = Sticky(text: "First", isPinned: true, tags: ["東京"])
+        let recent = Sticky(text: "Newer", createdAt: favorite.createdAt.addingTimeInterval(60))
+        let archived = Sticky(text: "Saved for later", isPinned: true, isArchived: true)
+        let notes = [recent, archived, favorite]
+        #expect(StickyCollection.notes.notes(in: notes).map(\.id) == [favorite.id, recent.id])
+        #expect(StickyCollection.favorites.notes(in: notes).map(\.id) == [favorite.id])
+        #expect(StickyCollection.archived.notes(in: notes).map(\.id) == [archived.id])
+        #expect(StickyCollection.notes.notes(in: notes, search: "東京").map(\.id) == [favorite.id])
+    }
+
 }

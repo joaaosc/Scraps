@@ -7,6 +7,54 @@ import Testing
 @Suite("Mobile sticky library")
 @MainActor
 struct MobileStickyLibraryTests {
+    @Test("Organizing a pending edit preserves its text and persists every metadata field")
+    func organizeDraft() async throws {
+        let durable = MemoryStickyStore()
+        let library = MobileStickyLibrary(store: SessionStickyStore(durable: durable))
+        let note = try #require(await library.newSticky(text: "Original"))
+        library.edit(id: note.id, text: "Updated café", richText: nil)
+        library.setPinned(true, id: note.id)
+        library.setTags(["#東京", "東京", "Ideas"], id: note.id)
+        library.setArchived(true, id: note.id)
+        await library.flush()
+        let saved = try #require(await durable.stickies().first)
+        #expect(saved.text == "Updated café" && saved.isPinned && saved.isArchived)
+        #expect(saved.tags == ["東京", "Ideas"])
+    }
+
+    @Test("Duplicating a session draft preserves its contents without writing it to disk")
+    func duplicateSession() async throws {
+        let durable = MemoryStickyStore()
+        let library = MobileStickyLibrary(store: SessionStickyStore(durable: durable))
+        let original = try #require(await library.newSticky(text: "Temporary", sessionOnly: true))
+        library.edit(id: original.id, text: "Unsaved session draft", richText: nil)
+        let copy = try #require(await library.duplicate(id: original.id))
+        #expect(copy.id != original.id && copy.text == "Unsaved session draft")
+        #expect(library.isSessionOnly(id: copy.id))
+        await library.flush()
+        #expect(await durable.stickies().isEmpty)
+    }
+
+    @Test("A widget edit preserves a concurrent mobile draft as a recovered copy")
+    func recoverConcurrentDraft() async throws {
+        let folder = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let files = try FileStickyStore(directoryURL: folder)
+        let library = MobileStickyLibrary(store: SessionStickyStore(durable: files))
+        let original = try #require(await library.newSticky(text: "Original"))
+        library.openSticky(id: original.id)
+        library.edit(id: original.id, text: "My local edit", richText: nil)
+        var external = original
+        external.edit(text: "Widget edit", at: Date().addingTimeInterval(60))
+        try await files.save(external)
+        await library.flush()
+        let saved = try await files.stickies()
+        #expect(saved.contains { $0.id == original.id && $0.text == "Widget edit" })
+        let recovered = try #require(saved.first { $0.conflictSourceID == original.id })
+        #expect(recovered.text == "My local edit")
+        #expect(library.navigation == [recovered.id])
+    }
+
     @Test("Changing color preserves a future modification timestamp")
     func colorKeepsMonotonicTimestamp() async throws {
         let future = Date().addingTimeInterval(86_400)

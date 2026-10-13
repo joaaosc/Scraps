@@ -9,6 +9,8 @@ public struct MobileStickyRootView: View {
     @Bindable private var library: MobileStickyLibrary
     @State private var search = ""
     @State private var creating = false
+    @State private var collection = StickyCollection.notes
+    @State private var tag: String?
     @AppStorage("mobileShowsList") private var showsList = false
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
@@ -18,8 +20,7 @@ public struct MobileStickyRootView: View {
     }
 
     private var results: [Sticky] {
-        let query = search.trimmingCharacters(in: .whitespacesAndNewlines)
-        return library.stickies.filter { query.isEmpty || $0.text.localizedStandardContains(query) }
+        collection.notes(in: library.stickies, search: search, tag: tag)
     }
 
     public var body: some View {
@@ -47,10 +48,21 @@ public struct MobileStickyRootView: View {
                     notesGrid
                 }
             }
-            .navigationTitle("Scraps")
+            .navigationTitle(collection == .notes && tag == nil ? "Scraps" : tag.map { "#" + $0 } ?? collection.localizedName)
             .searchable(text: $search, prompt: Text("Search Stickies", bundle: .module))
             .toolbar {
                 ToolbarOverflowMenu {
+                    Picker(String(localized: "Collection", bundle: .module), selection: $collection) {
+                        ForEach(StickyCollection.allCases) { value in
+                            Label(value.localizedName, systemImage: value.systemImage).tag(value)
+                        }
+                    }
+                    if !allTags.isEmpty {
+                        Picker(String(localized: "Tags", bundle: .module), selection: $tag) {
+                            Text("All Tags", bundle: .module).tag(Optional<String>.none)
+                            ForEach(allTags, id: \.self) { value in Text("#" + value).tag(Optional(value)) }
+                        }
+                    }
                     Button { showsList.toggle() } label: {
                         Label {
                             Text(showsList ? LocalizedStringKey("View as Grid") : LocalizedStringKey("View as List"), bundle: .module)
@@ -120,6 +132,8 @@ public struct MobileStickyRootView: View {
         }
     }
 
+    private var allTags: [String] { Array(Set(library.stickies.flatMap(\.tags))).sorted { $0.localizedStandardCompare($1) == .orderedAscending } }
+
     private var notesGrid: some View {
         ScrollView {
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 160, maximum: 300), spacing: 16)], spacing: 16) {
@@ -152,7 +166,16 @@ public struct MobileStickyRootView: View {
 
     @ContentBuilder
     private func noteMenu(_ sticky: Sticky) -> some View {
-        ShareLink(item: MobileStickyShareDocument(sticky: sticky), preview: SharePreview(LocalizedStringResource("\(sticky.title)"))) {
+        Button { library.setPinned(!sticky.isPinned, id: sticky.id) } label: {
+            Label(sticky.isPinned ? String(localized: "Remove Favorite", bundle: .module) : String(localized: "Add Favorite", bundle: .module), systemImage: "star")
+        }
+        Button { library.setArchived(!sticky.isArchived, id: sticky.id) } label: {
+            Label(sticky.isArchived ? String(localized: "Unarchive", bundle: .module) : String(localized: "Archive", bundle: .module), systemImage: "archivebox")
+        }
+        Button { Task { if let copy = await library.duplicate(id: sticky.id) { library.openSticky(id: copy.id) } } } label: {
+            Label { Text("Duplicate", bundle: .module) } icon: { Image(systemName: "doc.on.doc") }
+        }
+        ShareLink(item: StickyShareDocument(sticky: sticky), preview: SharePreview(LocalizedStringResource("\(sticky.title)"))) {
             Label { Text("Share", bundle: .module) } icon: { Image(systemName: "square.and.arrow.up") }
         }
         Button(role: .destructive) { Task { await library.moveToTrash(id: sticky.id) } } label: {

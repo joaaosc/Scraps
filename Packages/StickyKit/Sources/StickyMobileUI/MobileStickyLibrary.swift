@@ -159,6 +159,49 @@ public final class MobileStickyLibrary {
         sortStickies()
     }
 
+    public func setPinned(_ pinned: Bool, id: UUID) {
+        updateMetadata(id: id) { $0.isPinned = pinned }
+    }
+    public func setArchived(_ archived: Bool, id: UUID) {
+        updateMetadata(id: id) { $0.isArchived = archived }
+    }
+    public func setTags(_ tags: [String], id: UUID) {
+        updateMetadata(id: id) { $0.tags = Sticky.normalizedTags(tags) }
+    }
+    public func duplicate(id: UUID) async -> Sticky? {
+        guard let original = sticky(id: id), let store, !deletingIdentifiers.contains(id) else { return nil }
+        let copy = original.duplicated()
+        let session = isSessionOnly(id: id)
+        let previous = writeQueue
+        let operation = Task { @MainActor [weak self] in
+            await previous?.value
+            guard let self else { return }
+            do {
+                if session { try await store.createSession(copy) }
+                else { try await store.save(copy) }
+                self.stickies.append(copy)
+                self.mutationVersion &+= 1
+                self.saveStates[copy.id] = .saved
+                if session { self.sessionIdentifiers.insert(copy.id) }
+                self.sortStickies()
+            } catch { self.report(error) }
+        }
+        writeQueue = operation
+        await operation.value
+        return sticky(id: copy.id)
+    }
+    private func updateMetadata(id: UUID, update: (inout Sticky) -> Void) {
+        guard !deletingIdentifiers.contains(id), let index = stickies.firstIndex(where: { $0.id == id }) else { return }
+        var sticky = stickies[index]
+        update(&sticky)
+        guard sticky != stickies[index] else { return }
+        sticky.updatedAt = max(Date(), sticky.updatedAt, sticky.createdAt)
+        stickies[index] = sticky
+        mutationVersion &+= 1
+        scheduleSave(id: id)
+        sortStickies()
+    }
+
     public func retrySave(id: UUID) async {
         pendingSaves[id]?.cancel()
         pendingSaves[id] = nil
@@ -273,6 +316,29 @@ public final class MobileStickyLibrary {
                     self.saveStates[id] = .saved
                 }
             } catch {
+                if let storageError = error as? FileStickyStoreError,
+                   storageError == .newerEditExists(id) || storageError == .recentlyDeleted(id),
+                   let draft = self.sticky(id: id) {
+                    // A widget or another device won the original. Preserve the
+                    // newest visible draft as a separate note before reloading.
+                    self.deletingIdentifiers.insert(id)
+                    defer { self.deletingIdentifiers.remove(id) }
+                    var copy = draft.duplicated()
+                    copy.conflictSourceID = id
+                    do {
+                        try await store.save(copy)
+                        self.pendingSaves[id]?.cancel()
+                        self.pendingSaves[id] = nil
+                        self.stickies.removeAll { $0.id == id }
+                        self.stickies.append(copy)
+                        self.saveStates[id] = nil
+                        self.saveStates[copy.id] = .saved
+                        self.navigation = self.navigation.map { $0 == id ? copy.id : $0 }
+                        self.mutationVersion &+= 1
+                        self.sortStickies()
+                        return
+                    } catch { self.report(error) }
+                }
                 if self.revisions[id, default: 0] == revision {
                     self.saveStates[id] = .failed
                 }
@@ -285,6 +351,7 @@ public final class MobileStickyLibrary {
 
     private func sortStickies() {
         stickies.sort {
+            if $0.isPinned != $1.isPinned { return $0.isPinned }
             if $0.updatedAt != $1.updatedAt { return $0.updatedAt > $1.updatedAt }
             return $0.id.uuidString < $1.id.uuidString
         }

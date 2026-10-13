@@ -48,3 +48,7 @@ Incorporada a alteração remota dos esquemas do Xcode sem remover as funcionali
 ### Disponibilidade da formatação
 
 A compilação Metal passou após instalar o componente oficial. Ajustado o conjunto de fontes para o tipo exigido pelo SDK 27. A branch antiga foi removida localmente e no remoto; resta apenas main.
+
+### Organização no iPhone e iPad
+
+Favoritos, arquivo, etiquetas, busca por etiquetas e duplicação disponíveis na biblioteca e no editor. A duplicação de notas de sessão permanece em memória. O compartilhamento RTF passou a usar a mesma conversão do Mac, preservando os novos estilos. Uma edição concorrente vinda de um widget mantém o rascunho móvel como cópia recuperada. Acrescentados testes dessas regras.
