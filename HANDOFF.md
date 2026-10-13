@@ -44,3 +44,7 @@ O CI passa a verificar o compilador e compilar o shader isoladamente antes do pa
 ### Integração concorrente e ferramenta Metal
 
 Incorporada a alteração remota dos esquemas do Xcode sem remover as funcionalidades recentes e sem reescrever o histórico. Os esquemas são regenerados a partir de project.yml. Identificado que o executor nativo não possui Metal Toolchain; o CI passa a instalar o componente oficial quando necessário. No Xcode local, instalar em Settings > Components se solicitado.
+
+### Disponibilidade da formatação
+
+A compilação Metal passou após instalar o componente oficial. Ajustado o conjunto de fontes para o tipo exigido pelo SDK 27. A branch antiga foi removida localmente e no remoto; resta apenas main.
