@@ -40,6 +40,8 @@ jobs:
         run: |
           PRODUCT=build.noindex/DerivedData/Build/Products/Debug/Scraps.app
           python3 Scripts/resolve-entitlements.py App/Scraps/Scraps.entitlements build.noindex/Debug.entitlements --configuration Debug --team 33FPG9442W
+          python3 Scripts/resolve-entitlements.py App/ScrapsWidgets/ScrapsWidgetsMac.entitlements build.noindex/Widget.entitlements --configuration Debug --team 33FPG9442W
+          codesign --force --sign - --entitlements build.noindex/Widget.entitlements "$PRODUCT/Contents/PlugIns/ScrapsWidgets.appex"
           codesign --force --sign - --entitlements build.noindex/Debug.entitlements "$PRODUCT"
           codesign --verify --deep --strict "$PRODUCT"
           codesign -d --entitlements - --xml "$PRODUCT"
@@ -63,6 +65,7 @@ jobs:
             CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=''
           PRODUCT=build.noindex/Archives/Scraps.xcarchive/Products/Applications/Scraps.app
           python3 Scripts/resolve-entitlements.py App/Scraps/Scraps.entitlements build.noindex/Release.entitlements --configuration Release --team 33FPG9442W
+          codesign --force --sign - --options runtime --entitlements build.noindex/Widget.entitlements "$PRODUCT/Contents/PlugIns/ScrapsWidgets.appex"
           codesign --force --sign - --options runtime --entitlements build.noindex/Release.entitlements "$PRODUCT"
           codesign --verify --deep --strict "$PRODUCT"
           codesign -d --entitlements - --xml "$PRODUCT"

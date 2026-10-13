@@ -22,6 +22,7 @@ struct ScrapsApp: App {
         do {
             let store = try StickyAppStorage.makeStore()
             StickyBoard.shared.connect(to: store)
+            Task { await StickyWidgetUpdates.shared.observe(store) }
             StickyCloudSync.shared.connect(to: store) { await StickyBoard.shared.flushAll() }
         } catch {
             Logger(subsystem: StickyKitIdentity.bundleIdentifier, category: "App")

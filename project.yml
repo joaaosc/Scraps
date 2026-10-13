@@ -79,6 +79,8 @@ targets:
         product: StickyUI
       - package: StickyKit
         product: StickySync
+      - target: ScrapsWidgetsMac
+        embed: true
   ScrapsMobile:
     type: application
     platform: iOS
@@ -129,6 +131,80 @@ targets:
         product: StickyIntents
       - package: StickyKit
         product: StickySync
+      - target: ScrapsWidgetsMobile
+        embed: true
+  ScrapsWidgetsMac:
+    type: app-extension
+    platform: macOS
+    deploymentTarget: "27.0"
+    sources:
+      - path: App/ScrapsWidgets
+        excludes: [Info-Mac.plist, Info-Mobile.plist]
+      - path: App/Scraps/PrivacyInfo.xcprivacy
+    info:
+      path: App/ScrapsWidgets/Info-Mac.plist
+      properties:
+        CFBundleDisplayName: Scraps
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        CFBundleLocalizations: [en, pt-BR]
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.joaocosta.Scraps.widgets
+        PRODUCT_NAME: ScrapsWidgets
+        DEVELOPMENT_TEAM: 33FPG9442W
+        CODE_SIGN_STYLE: Automatic
+        CODE_SIGN_ENTITLEMENTS: App/ScrapsWidgets/ScrapsWidgetsMac.entitlements
+        ENABLE_APP_SANDBOX: YES
+        ENABLE_HARDENED_RUNTIME: YES
+        APPLICATION_EXTENSION_API_ONLY: YES
+        SWIFT_DEFAULT_ACTOR_ISOLATION: nonisolated
+        SKIP_INSTALL: YES
+        ARCHS: arm64
+    dependencies:
+      - package: StickyKit
+        product: StickyDomain
+      - package: StickyKit
+        product: StickyStorage
+      - package: StickyKit
+        product: StickyEditor
+  ScrapsWidgetsMobile:
+    type: app-extension
+    platform: iOS
+    deploymentTarget: "27.0"
+    sources:
+      - path: App/ScrapsWidgets
+        excludes: [Info-Mac.plist, Info-Mobile.plist]
+      - path: App/Scraps/PrivacyInfo.xcprivacy
+    info:
+      path: App/ScrapsWidgets/Info-Mobile.plist
+      properties:
+        CFBundleDisplayName: Scraps
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        CFBundleLocalizations: [en, pt-BR]
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.joaocosta.Scraps.widgets
+        PRODUCT_NAME: ScrapsWidgets
+        DEVELOPMENT_TEAM: 33FPG9442W
+        CODE_SIGN_STYLE: Automatic
+        CODE_SIGN_ENTITLEMENTS: App/ScrapsWidgets/ScrapsWidgetsMobile.entitlements
+        APPLICATION_EXTENSION_API_ONLY: YES
+        SWIFT_DEFAULT_ACTOR_ISOLATION: nonisolated
+        TARGETED_DEVICE_FAMILY: "1,2"
+        SKIP_INSTALL: YES
+    dependencies:
+      - package: StickyKit
+        product: StickyDomain
+      - package: StickyKit
+        product: StickyStorage
+      - package: StickyKit
+        product: StickyEditor
 schemes:
   Scraps:
     build:

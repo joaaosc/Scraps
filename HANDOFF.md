@@ -32,3 +32,7 @@ Editor nativo com título, cabeçalho, legenda, código, sublinhado, tachado, de
 ### Animação Metal
 
 Borda animada por shader Metal ao criar uma nota ou trocar sua cor. O editor nativo continua independente do efeito. A animação termina em 850 ms, pausa em segundo plano e respeita movimento reduzido, transparência reduzida, contraste e economia de energia. Corrigida também a disponibilidade do atributo de previsão do Handoff no Mac. Validação nativa em andamento.
+
+### Widgets nativos
+
+Extensões WidgetKit para Mac, iPhone e iPad com nota configurável e captura rápida. Caixas de marcar são interativas e recusam alterações quando o texto mudou desde a renderização. Notas de sessão e arquivadas ficam fora dos widgets; atualizações usam o armazenamento compartilhado e o conteúdo é marcado como sensível. O aplicativo precisa ser aberto uma vez antes de adicionar widgets. Compilação e assinatura das extensões em validação.

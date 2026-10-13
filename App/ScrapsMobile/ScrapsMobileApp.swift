@@ -35,6 +35,7 @@ struct ScrapsMobileApp: App {
         do {
             let durable = try StickyAppStorage.makeStore()
             library = MobileStickyLibrary(store: SessionStickyStore(durable: durable))
+            Task { await StickyWidgetUpdates.shared.observe(durable) }
             StickyCloudSync.shared.connect(to: durable) {
                 await library.flush()
                 return await library.saveStates.values.allSatisfy { $0 == .saved }
