@@ -1,0 +1,89 @@
+name: Scraps
+
+options:
+  bundleIdPrefix: com.joaocosta
+  createIntermediateGroups: true
+  developmentLanguage: en
+  deploymentTarget:
+    macOS: "27.0"
+
+configs:
+  Debug: debug
+  Release: release
+
+# Version settings come from an xcconfig, not from here. See
+# Config/Version.xcconfig.
+configFiles:
+  Debug: Config/Version.xcconfig
+  Release: Config/Version.xcconfig
+
+settings:
+  base:
+    MACOSX_DEPLOYMENT_TARGET: "27.0"
+    SWIFT_VERSION: "6.0"
+    SWIFT_STRICT_CONCURRENCY: complete
+    SWIFT_APPROACHABLE_CONCURRENCY: YES
+    SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor
+    SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY: YES
+  configs:
+    Release:
+      # A secure timestamp is required for notarization; without it the upload
+      # is accepted and then rejected.
+      OTHER_CODE_SIGN_FLAGS: --timestamp
+      CODE_SIGN_INJECT_BASE_ENTITLEMENTS: NO
+      SWIFT_COMPILATION_MODE: wholemodule
+
+packages:
+  StickyKit:
+    path: Packages/StickyKit
+
+targets:
+  Scraps:
+    type: application
+    platform: macOS
+    deploymentTarget: "27.0"
+    sources:
+      - path: App/Scraps
+    info:
+      path: App/Scraps/Info.plist
+      properties:
+        CFBundleDisplayName: Scraps
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        LSApplicationCategoryType: public.app-category.productivity
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.joaocosta.Scraps
+        PRODUCT_NAME: Scraps
+        CODE_SIGN_STYLE: Automatic
+        # Declared here so regenerating the project keeps it.
+        "CODE_SIGN_IDENTITY[sdk=macosx*]": Apple Development
+        DEVELOPMENT_TEAM: 33FPG9442W
+        CODE_SIGN_ENTITLEMENTS: App/Scraps/Scraps.entitlements
+        # The only entitlement the app has. Stickies live in the app's own
+        # container and reach Notes through the system's sharing service.
+        ENABLE_APP_SANDBOX: YES
+        ENABLE_HARDENED_RUNTIME: YES
+    dependencies:
+      - package: StickyKit
+        product: StickyIntents
+      - package: StickyKit
+        product: StickyStorage
+      - package: StickyKit
+        product: StickyUI
+
+schemes:
+  Scraps:
+    build:
+      targets:
+        Scraps: all
+    run:
+      config: Debug
+    # The package's tests run from the app's scheme, so one command covers
+    # both the build of the app and the rules it is made of.
+    test:
+      config: Debug
+      targets:
+        - package: StickyKit/StickyDomainTests
+        - package: StickyKit/StickyStorageTests
+        - package: StickyKit/StickyUITests
