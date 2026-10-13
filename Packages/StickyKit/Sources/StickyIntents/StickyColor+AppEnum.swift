@@ -4,7 +4,7 @@ import StickyDomain
 
 /// A fixed color parameter for Siri and Shortcuts. The shared domain stays
 /// independent of App Intents so its storage and migration rules are portable.
-extension StickyColor: @retroactive AppEnum {
+extension StickyColor: AppEnum {
     public static let typeDisplayRepresentation = TypeDisplayRepresentation(
         name: LocalizedStringResource("Color", bundle: .atURL(Bundle.module.bundleURL))
     )

@@ -223,4 +223,3 @@ public struct StickyTextEditor: View {
         selection = AttributedTextSelection(insertionPoint: attributedText.endIndex)
     }
 }
-

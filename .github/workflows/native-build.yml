@@ -2,7 +2,6 @@ name: Native builds
 on:
   push:
     branches: [main, "feature/**"]
-  pull_request:
   workflow_dispatch:
 permissions:
   contents: read
