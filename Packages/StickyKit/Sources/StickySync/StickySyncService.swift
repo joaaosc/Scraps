@@ -17,6 +17,7 @@ actor StickySyncService: CKSyncEngineDelegate {
     private var changes: Task<Void, Never>?
     private var enabled = false
     private var failure: String?
+    private var assetFiles: [String: Set<URL>] = [:]
     private var manualSync: Task<Void, Never>?
     private let zoneID = CKRecordZone.ID(zoneName: "Scraps")
     private static let recordType = "Scrap"
@@ -206,9 +207,9 @@ actor StickySyncService: CKSyncEngineDelegate {
             if let error = change.error { await reportFailure(error) }
         case let .sentRecordZoneChanges(changes):
             for record in changes.savedRecords {
-                do { try remember(record) } catch { await reportFailure(error) }
+                do { try remember(record); removeUploadedAssets(record.recordID.recordName) } catch { await reportFailure(error) }
             }
-            for id in changes.deletedRecordIDs { persisted.records[id.recordName] = nil }
+            for id in changes.deletedRecordIDs { persisted.records[id.recordName] = nil; removeUploadedAssets(id.recordName) }
             for failed in changes.failedRecordSaves {
                 switch failed.error.code {
                 case .serverRecordChanged:
@@ -273,6 +274,7 @@ actor StickySyncService: CKSyncEngineDelegate {
                 let file = stateURL.deletingLastPathComponent().appending(path: "Assets/\(UUID().uuidString).json")
                 try FileManager.default.createDirectory(at: file.deletingLastPathComponent(), withIntermediateDirectories: true)
                 try data.write(to: file, options: .atomic)
+                assetFiles[id.recordName, default: []].insert(file)
                 record["document"] = CKAsset(fileURL: file)
                 record.encryptedValues["payload"] = nil
             }
@@ -367,6 +369,11 @@ actor StickySyncService: CKSyncEngineDelegate {
             .sorted { $0.lexicographicallyPrecedes($1) }
         let hash = Array(SHA256.hash(data: pieces.reduce(into: Data()) { $0.append($1) }).prefix(16))
         return UUID(uuid: (hash[0], hash[1], hash[2], hash[3], hash[4], hash[5], hash[6], hash[7], hash[8], hash[9], hash[10], hash[11], hash[12], hash[13], hash[14], hash[15]))
+    }
+
+    private func removeUploadedAssets(_ recordName: String) {
+        let files = assetFiles.removeValue(forKey: recordName) ?? []
+        for file in files { try? FileManager.default.removeItem(at: file) }
     }
 
     private func recordID(_ id: UUID) -> CKRecord.ID { CKRecord.ID(recordName: id.uuidString, zoneID: zoneID) }

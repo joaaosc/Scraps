@@ -10,7 +10,6 @@ final class ScrapsMobileDelegate: NSObject, UIApplicationDelegate {
 
     func application(_ application: UIApplication, didReceiveRemoteNotification userInfo: [AnyHashable: Any]) async -> UIBackgroundFetchResult {
         guard StickyCloudSync.shared.isEnabled else { return .noData }
-        await StickyCloudSync.shared.synchronize()
-        return .newData
+        return await StickyCloudSync.shared.synchronize(within: .seconds(20)) ? .newData : .failed
     }
 }

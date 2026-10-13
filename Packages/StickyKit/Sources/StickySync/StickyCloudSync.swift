@@ -52,6 +52,23 @@ public final class StickyCloudSync {
         await service.synchronize()
     }
 
+    /// Background delivery must finish before the system's notification deadline.
+    /// A slow operation remains owned by the engine and can resume later.
+    public func synchronize(within ceiling: Duration) async -> Bool {
+        let completion = StickySyncCompletion()
+        return await withCheckedContinuation { continuation in
+            completion.continuation = continuation
+            Task {
+                await synchronize()
+                completion.resume(status == .upToDate)
+            }
+            Task {
+                try? await Task.sleep(for: ceiling)
+                completion.resume(false)
+            }
+        }
+    }
+
     public var statusMessage: String {
         switch status {
         case .disabled: String(localized: "On this device only", bundle: .module)
@@ -70,5 +87,14 @@ public final class StickyCloudSync {
             isEnabled = false
             UserDefaults.standard.set(false, forKey: "cloudSyncEnabled")
         }
+    }
+}
+
+@MainActor
+private final class StickySyncCompletion {
+    var continuation: CheckedContinuation<Bool, Never>?
+    func resume(_ value: Bool) {
+        continuation?.resume(returning: value)
+        continuation = nil
     }
 }

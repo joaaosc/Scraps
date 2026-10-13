@@ -56,3 +56,7 @@ Favoritos, arquivo, etiquetas, busca por etiquetas e duplicação disponíveis n
 ### Biblioteca e organização no Mac
 
 Biblioteca nativa com três colunas, busca, favoritos, etiquetas, arquivo, prévia formatada e compartilhamento. Acesso em Janela > Suas notas (⌘0) e pelo widget. Notas arquivadas permanecem salvas e não abrem janelas flutuantes. Metadados de uma nota em edição usam a fila de salvamento do editor. Remoções externas preservam rascunhos como cópias; falhas permitem guardar a edição separadamente. Acrescentado teste dessa recuperação.
+
+### Limites da sincronização em segundo plano
+
+A notificação silenciosa no iOS responde em até 20 segundos, dentro do limite do sistema, sem abandonar o estado do motor de sincronização. Arquivos temporários de anexos grandes são removidos depois da confirmação de envio. A validação real de contas, rede e notificações continua no roteiro manual.
