@@ -84,3 +84,7 @@ Gravações pendentes de notas que já desapareceram são retiradas da fila. Imp
 ### Recuperação na biblioteca Mac
 
 Notas arquivadas também podem ser movidas para Apagadas recentemente pela biblioteca. Favoritos, duplicação e arquivo estão no menu da barra do Mac. Se arquivar falhar no salvamento, a nota continua editável para preservar e recuperar o rascunho.
+
+### Reconciliação do arquivo no Mac
+
+Uma notificação do próprio salvamento de arquivo não cria uma cópia recuperada enquanto a gravação termina. Desarquivar remove o bloqueio local da janela e volta a mostrar a nota. A conferência visual desse fluxo permanece no roteiro manual.

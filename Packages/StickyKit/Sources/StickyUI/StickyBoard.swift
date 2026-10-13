@@ -168,6 +168,7 @@ public final class StickyBoard {
         mutate(id: id) { $0.tags = Sticky.normalizedTags(tags) }
     }
     public func setArchived(_ archived: Bool, id: UUID) {
+        if !archived { closedHere.remove(id); focusOnOpen.insert(id) }
         mutate(id: id) { $0.isArchived = archived }
     }
     public func moveToTrash(_ id: UUID) {
@@ -342,6 +343,9 @@ public final class StickyBoard {
             // An external change must never close an editor with an unsaved draft.
             guard let controller = controllers[id], !controller.model.isClosing else { continue }
             if controller.model.hasUnsavedChanges {
+                // An archive written by this editor announces its change before
+                // its save task drains. Its explicit operation reconciles again.
+                if controller.model.isArchived { continue }
                 recoverDraft(id)
             } else { controller.closeNow() }
         }
