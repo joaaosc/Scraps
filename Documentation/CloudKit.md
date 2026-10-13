@@ -50,6 +50,8 @@ publicar esse esquema ou provar uma sincronização com a conta do proprietário
 
 ## Comportamento e recuperação
 
+- A extensão do widget altera o arquivo compartilhado; o aplicativo envia
+  essas alterações ao iCloud quando está em execução ou é aberto novamente.
 - Notas de sessão existem apenas em memória; não entram no iCloud nem nos widgets.
 - Arquivar conserva a nota e sincroniza o arquivo; no Mac fecha sua janela.
 - Exclusão vai para recuperação por 30 dias. Remoção definitiva e expiração

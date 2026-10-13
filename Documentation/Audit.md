@@ -67,3 +67,16 @@ URLs públicas e screenshots reais conforme [AppStore.md](AppStore.md).
 
 A comprovação de compilação e assinatura está no CI da revisão correspondente;
 a comprovação do uso continua pendente das conferências manuais.
+
+## Resultado da revisão final
+
+Código e657fb3, versão 1.0.0 (5): 165 testes nativos e 85 portáveis aprovados;
+builds Debug, widgets, compilação Metal e arquivos Release de Mac e iOS/iPadOS
+aprovados. O produto Mac do CI possui assinatura ad hoc; a distribuição real
+continua exigindo a equipe e os perfis. [Evidência do CI](https://github.com/joaaosc/Scraps/actions/runs/38377442843).
+
+O editor também compara a versão efetivamente salva antes de substituir o
+arquivo: uma data local posterior não permite sobrescrever uma edição externa.
+Leituras iniciadas antes de um salvamento não substituem o texto confirmado.
+Os ambientes CloudKit têm estados separados. Uso real e sincronização entre
+dispositivos permanecem no roteiro manual.

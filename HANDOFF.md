@@ -1,6 +1,6 @@
 # Scraps — desenvolvimento e validação
 
-Atualizado em 13/10/2026. Desenvolvimento diretamente na `main`, com commits por funcionalidade. Versão em preparação: 1.0.0 (5), macOS 27 e iOS/iPadOS 27.
+Atualizado em 13/10/2026. Desenvolvimento diretamente na `main`, com commits por funcionalidade. Versão validada para conferência nos dispositivos: 1.0.0 (5), macOS 27 e iOS/iPadOS 27.
 
 ## Funcionalidades integradas
 
@@ -9,6 +9,9 @@ Atualizado em 13/10/2026. Desenvolvimento diretamente na `main`, com commits por
 - Quatro ações fixas no Spotlight; o conteúdo das notas não é indexado. Interface em inglês e português brasileiro.
 - Armazenamento compartilhado com migração que preserva os originais, favoritos, etiquetas, arquivo e duplicação no modelo de dados.
 - Sincronização opcional pela base privada do CloudKit, resolução de conflitos com cópias recuperadas, Handoff e links para notas entre plataformas.
+- Widgets nativos de nota, tarefas interativas e captura rápida nas duas plataformas.
+- Formatação com estilos semânticos, sublinhado, tachado, destaque e links; biblioteca e organização completas no Mac e iOS.
+- Animação Metal breve, com interrupção por acessibilidade e segundo plano.
 - Instalação com proteção da versão anterior; preparação de arquivos Release para as duas plataformas.
 
 ## Registro por funcionalidade
@@ -19,11 +22,16 @@ O histórico de implementação e auditoria foi integrado sem reescrita. Corrigi
 
 ## Validação
 
-As regras portáveis passam em Linux. Compilação e validação dos produtos com SDKs Apple são feitas no CI; a ampliação ainda não está aprovada por esse CI. Testes visuais, uso em dispositivos, Spotlight, sincronização real e distribuição com certificados ficam para o proprietário.
+- 85 testes portáveis em Linux e 165 testes nativos com SDKs Apple 27 aprovados.
+- Builds Debug de Mac e iOS/iPadOS, compilação Metal, extensões incorporadas e arquivos Release das duas plataformas aprovados.
+- Produto Mac e widgets com assinatura ad hoc: sandbox, grupos, iCloud, notificações, idiomas, metadados e ausência de depuração em Release verificados. Arquivos iOS do CI não têm assinatura de distribuição.
+- Instalador verificado em cinco cenários isolados: sucesso, assinatura inválida, recusa ao sair, processo ativo e falha de registro. Nenhum app real foi iniciado.
+- Revisão de código validada: `e657fb3`. [CI aprovado](https://github.com/joaaosc/Scraps/actions/runs/38377442843), [artefatos Release](https://github.com/joaaosc/Scraps/actions/runs/38377442843/artifacts/11802470484).
+- Testes visuais, uso em dispositivos, Spotlight, sincronização real e distribuição com certificados ficam para o proprietário, conforme [roteiro](Documentation/Validation.md).
 
 ## Pendências de publicação
 
-Concluir a ampliação, passar o CI nativo e atualizar a documentação. A distribuição exige perfis com CloudKit, notificações e grupos de aplicativos, esquema CloudKit em produção, URLs de suporte/privacidade e capturas reais. Não houve publicação na App Store.
+A implementação solicitada e a validação nativa estão concluídas. A distribuição exige perfis com CloudKit, notificações e grupos de aplicativos, esquema CloudKit em produção, URLs de suporte/privacidade e capturas reais. Não houve publicação na App Store.
 
 ### Formatação ampliada
 
@@ -108,3 +116,20 @@ A recuperação atualiza a versão de referência antes de permitir outra ediç�
 ### Separação dos ambientes iCloud
 
 Development e Production usam arquivos de estado separados para não reutilizar tokens e confirmações entre bases distintas. A mudança conserva os documentos locais e qualquer estado anterior; ao iniciar o ambiente novo, as notas locais entram na sincronização. O ambiente efetivo também consta do Info.plist dos apps.
+
+### Conferência final concluída
+
+Versão 1.0.0 (5) validada no CI da revisão e657fb3. O commit deste registro altera apenas documentação; os binários correspondem ao código validado. Resta somente main no remoto e neste checkout. Não foi realizado XCUITest, automação de teclado, abertura do app ou teste em dispositivo.
+
+### Instalar e testar
+
+```sh
+cd /Users/joaocosta/Projects/Scraps
+git fetch --prune origin
+git switch main
+git pull --ff-only origin main
+xcodegen generate
+Scripts/dev-install.sh
+```
+
+Conferir 1.0.0 (5) nos ajustes e abrir a biblioteca com ⌘0. Para iPhone/iPad, abrir Scraps.xcodeproj no Xcode 27, selecionar ScrapsMobile e um simulador iOS 27, depois ⌘R. Em aparelho real, configurar assinatura e equipe no app e na extensão. iCloud e Handoff exigem [capacidades e esquema](Documentation/CloudKit.md); widgets aparecem após abrir o app uma vez.
