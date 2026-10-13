@@ -1,5 +1,6 @@
 import AppKit
 import StickyDomain
+import StickyStorage
 import StickyEditor
 import SwiftUI
 

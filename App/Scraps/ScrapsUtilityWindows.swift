@@ -10,11 +10,19 @@ final class ScrapsUtilityWindows {
     static let shared = ScrapsUtilityWindows()
     private var settings: NSWindowController?
     private var colors: NSWindowController?
+    private var library: NSWindowController?
     private var deleted: NSWindowController?
 
     func configure() {
         StickyBoard.shared.showSettingsHandler = { [weak self] in self?.showSettings() }
         StickyBoard.shared.showColorPickerHandler = { [weak self] in self?.showColors() }
+    }
+
+    func showLibrary() {
+        if library == nil {
+            library = makeWindow(title: "Scraps", size: CGSize(width: 860, height: 540)) { ScrapsLibraryView() }
+        }
+        show(library)
     }
 
     func showSettings() {

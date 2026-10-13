@@ -52,3 +52,7 @@ A compilação Metal passou após instalar o componente oficial. Ajustado o conj
 ### Organização no iPhone e iPad
 
 Favoritos, arquivo, etiquetas, busca por etiquetas e duplicação disponíveis na biblioteca e no editor. A duplicação de notas de sessão permanece em memória. O compartilhamento RTF passou a usar a mesma conversão do Mac, preservando os novos estilos. Uma edição concorrente vinda de um widget mantém o rascunho móvel como cópia recuperada. Acrescentados testes dessas regras.
+
+### Biblioteca e organização no Mac
+
+Biblioteca nativa com três colunas, busca, favoritos, etiquetas, arquivo, prévia formatada e compartilhamento. Acesso em Janela > Suas notas (⌘0) e pelo widget. Notas arquivadas permanecem salvas e não abrem janelas flutuantes. Metadados de uma nota em edição usam a fila de salvamento do editor. Remoções externas preservam rascunhos como cópias; falhas permitem guardar a edição separadamente. Acrescentado teste dessa recuperação.

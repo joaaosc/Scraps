@@ -323,6 +323,22 @@ func eventually(
 @MainActor
 @Suite("A sticky's behaviour")
 struct StickyModelTests {
+    @Test("Recovering a draft creates a new note before closing without deleting the original")
+    func recoverDraftAsCopy() async throws {
+        let spy = Spy()
+        let model = makeModel(text: "Original", spy: spy, autosave: .seconds(60))
+        model.text = "A concurrent edit"
+        model.isPinned = true
+        model.tags = ["東京"]
+        let originalID = model.id
+        await model.recoverDraft { copy in try await spy.save(copy) }.value
+        let copy = try #require(spy.saved.last)
+        #expect(copy.id != originalID && copy.conflictSourceID == originalID)
+        #expect(copy.text == "A concurrent edit" && copy.isPinned && copy.tags == ["東京"])
+        #expect(spy.closedWindow == 1 && spy.deleted.isEmpty && spy.trashed.isEmpty)
+        #expect(!model.hasUnsavedChanges)
+    }
+
     /// Records what the model asked of the outside world.
     @MainActor
     final class Spy {

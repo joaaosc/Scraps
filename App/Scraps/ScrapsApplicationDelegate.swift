@@ -47,7 +47,7 @@ final class ScrapsApplicationDelegate: NSObject, NSApplicationDelegate {
             switch route {
             case let .note(id): Task { await openNote(id) }
             case .new: StickyBoard.shared.newSticky()
-            case .library: StickyBoard.shared.showAll()
+            case .library: ScrapsUtilityWindows.shared.showLibrary()
             }
         }
     }

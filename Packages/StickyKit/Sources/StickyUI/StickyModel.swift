@@ -78,6 +78,15 @@ public final class StickyModel {
             scheduleSave()
         }
     }
+    public var isPinned: Bool {
+        didSet { if isPinned != oldValue { base.isPinned = isPinned; scheduleSave() } }
+    }
+    public var isArchived: Bool {
+        didSet { if isArchived != oldValue { base.isArchived = isArchived; scheduleSave() } }
+    }
+    public var tags: [String] {
+        didSet { if tags != oldValue { base.tags = Sticky.normalizedTags(tags); scheduleSave() } }
+    }
     public private(set) var status: Status?
     public private(set) var isSharing = false
     public private(set) var isClosing = false
@@ -122,6 +131,9 @@ public final class StickyModel {
         floatsOnTop = sticky.floatsOnTop
         isCollapsed = sticky.isCollapsed
         appearsOnAllSpaces = sticky.appearsOnAllSpaces
+        isPinned = sticky.isPinned
+        isArchived = sticky.isArchived
+        tags = sticky.tags
         self.startsFocused = startsFocused
         self.isSessionOnly = isSessionOnly
         self.autosaveDelay = autosaveDelay
@@ -146,6 +158,9 @@ public final class StickyModel {
         sticky.floatsOnTop = floatsOnTop
         sticky.isCollapsed = isCollapsed
         sticky.appearsOnAllSpaces = appearsOnAllSpaces
+        sticky.isPinned = isPinned
+        sticky.isArchived = isArchived
+        sticky.tags = Sticky.normalizedTags(tags)
         return sticky
     }
 
@@ -227,6 +242,33 @@ public final class StickyModel {
         }
         closeTask = close
         return close
+    }
+
+    /// Protect a local draft after another process edits or removes its original.
+    /// The original stays untouched; the recovered copy goes through the store.
+    @discardableResult
+    func recoverDraft(save: @escaping @Sendable (Sticky) async throws -> Void) -> Task<Void, Never> {
+        if let closeTask { return closeTask }
+        guard !isDeleted else { return Task {} }
+        isClosing = true
+        autosaveTask?.cancel()
+        let recovery = Task {
+            await lastSave?.value
+            var copy = snapshot.duplicated()
+            copy.conflictSourceID = id
+            do {
+                try await save(copy)
+                isDeleted = true
+                isDirty = false
+                dependencies.closeWindow()
+            } catch {
+                show(.failure(error.localizedDescription), for: nil)
+            }
+            isClosing = false
+            closeTask = nil
+        }
+        closeTask = recovery
+        return recovery
     }
 
     @discardableResult
@@ -320,6 +362,9 @@ public final class StickyModel {
         floatsOnTop = sticky.floatsOnTop
         isCollapsed = sticky.isCollapsed
         appearsOnAllSpaces = sticky.appearsOnAllSpaces
+        isPinned = sticky.isPinned
+        isArchived = sticky.isArchived
+        tags = sticky.tags
         base = sticky
         dependencies.updateTitle(title)
         isApplyingStored = false

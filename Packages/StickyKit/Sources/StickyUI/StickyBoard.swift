@@ -25,6 +25,7 @@ public final class StickyBoard {
     public private(set) var recentlyDeleted: [Sticky] = []
     public private(set) var lastError: String?
     public private(set) var openStickies: [Sticky] = []
+    public private(set) var libraryStickies: [Sticky] = []
     public private(set) var globalShortcutEnabled = false
     @ObservationIgnored public var showSettingsHandler: (@MainActor () -> Void)?
     @ObservationIgnored public var showColorPickerHandler: (@MainActor () -> Void)?
@@ -149,10 +150,81 @@ public final class StickyBoard {
     }
 
     public func openStoredSticky(_ id: UUID) async -> Bool {
+        closedHere.remove(id)
         await reconcile()
         guard let controller = controllers[id] else { return false }
         controller.show(takingKeyboard: true)
         return true
+    }
+
+    public func isSessionOnly(_ id: UUID) -> Bool { sessionIDs.contains(id) }
+    public func currentSnapshot(_ id: UUID) -> Sticky? {
+        controllers[id]?.model.snapshot ?? libraryStickies.first { $0.id == id }
+    }
+    public func setPinned(_ pinned: Bool, id: UUID) {
+        mutate(id: id) { $0.isPinned = pinned }
+    }
+    public func setTags(_ tags: [String], id: UUID) {
+        mutate(id: id) { $0.tags = Sticky.normalizedTags(tags) }
+    }
+    public func setArchived(_ archived: Bool, id: UUID) {
+        mutate(id: id) { $0.isArchived = archived }
+    }
+    public func duplicate(_ id: UUID) {
+        guard let original = currentSnapshot(id) else { return }
+        let copy = original.duplicated()
+        let sessionOnly = sessionIDs.contains(id)
+        persist(copy, sessionOnly: sessionOnly, focus: true)
+    }
+    private func mutate(id: UUID, change: @escaping @MainActor (inout Sticky) -> Void) {
+        let task = Task { @MainActor in
+            if let model = controllers[id]?.model {
+                guard !model.isClosing else { return }
+                var note = model.snapshot
+                change(&note)
+                model.isPinned = note.isPinned
+                model.isArchived = note.isArchived
+                model.tags = note.tags
+                await model.flush().value
+                guard !model.hasUnsavedChanges else { return }
+            } else {
+                guard var note = currentSnapshot(id) else { return }
+                let previous = note
+                change(&note)
+                note.updatedAt = max(Date(), note.updatedAt, note.createdAt)
+                let target: (any StickyStore)? = sessionIDs.contains(id) ? sessionStore : store
+                guard let target else { throw StickyBoardError.storeUnavailable }
+                if let files = target as? FileStickyStore { try await files.applySynchronized(note, replacing: previous) }
+                else { try await target.save(note) }
+            }
+            await reconcile()
+        }
+        track(task, id: UUID())
+    }
+    private func persist(_ note: Sticky, sessionOnly: Bool, focus: Bool) {
+        let task = Task { @MainActor in
+            let target: (any StickyStore)? = sessionOnly ? sessionStore : store
+            guard let target else { throw StickyBoardError.storeUnavailable }
+            if sessionOnly { sessionIDs.insert(note.id) }
+            if focus { focusOnOpen.insert(note.id) }
+            try await target.save(note)
+            await reconcile()
+        }
+        track(task, id: note.id)
+    }
+    public func recoverDraft(_ id: UUID) {
+        guard let model = controllers[id]?.model else { return }
+        let target: (any StickyStore)? = sessionIDs.contains(id) ? sessionStore : store
+        guard let target else { return }
+        model.recoverDraft { copy in try await target.save(copy) }
+    }
+    private func track(_ task: Task<Void, any Error>, id: UUID) {
+        creations[id] = task
+        Task {
+            defer { creations[id] = nil }
+            do { try await task.value }
+            catch { report(String(localized: "Could not update this sticky", bundle: .module), error) }
+        }
     }
 
     public func showAll() {
@@ -247,10 +319,19 @@ public final class StickyBoard {
             $0.createdAt == $1.createdAt ? $0.id.uuidString < $1.id.uuidString : $0.createdAt < $1.createdAt
         }
         closedHere.formIntersection(present)
-        let plan = StickyReconciliation(stored: stored.map(\.id), present: present, open: Array(controllers.keys))
-        for id in plan.toClose { controllers[id]?.closeNow() }
+        libraryStickies = stored.map { controllers[$0.id]?.model.snapshot ?? $0 }
+        present.subtract(stored.filter(\.isArchived).map(\.id))
+        let visible = stored.filter { !$0.isArchived }
+        let plan = StickyReconciliation(stored: visible.map(\.id), present: present, open: Array(controllers.keys))
+        for id in plan.toClose {
+            // An external change must never close an editor with an unsaved draft.
+            guard let controller = controllers[id], !controller.model.isClosing else { continue }
+            if controller.model.hasUnsavedChanges {
+                recoverDraft(id)
+            } else { controller.closeNow() }
+        }
         for sticky in stored { controllers[sticky.id]?.model.applyStoredSnapshot(sticky) }
-        for sticky in stored where plan.toOpen.contains(sticky.id) && !closedHere.contains(sticky.id) {
+        for sticky in visible where plan.toOpen.contains(sticky.id) && !closedHere.contains(sticky.id) {
             guard controllers[sticky.id] == nil else { continue }
             if sessionIDs.contains(sticky.id) {
                 open(sticky, store: sessionStore, sessionOnly: true)
@@ -286,7 +367,6 @@ public final class StickyBoard {
     private func windowClosed(_ id: UUID) {
         controllers[id] = nil
         closedHere.insert(id)
-        sessionIDs.remove(id)
         if activeStickyID == id { activeStickyID = nil }
         updateOpenStickies()
         Task { await refreshRecentlyDeleted() }

@@ -34,6 +34,7 @@ struct ScrapsCommands: Commands {
                 .keyboardShortcut("m").disabled(board.activeModel == nil)
         }
         CommandGroup(before: .windowArrangement) {
+            Button("Your Stickies") { ScrapsUtilityWindows.shared.showLibrary() }.keyboardShortcut("0")
             Button("Show All Stickies", action: board.showAll)
         }
         CommandMenu("Sticky") {

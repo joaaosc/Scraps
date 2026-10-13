@@ -17,6 +17,7 @@
 		2D2D82F16D57114F4E4B4D1D /* ToggleStickyChecklistIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 395AF7259A59F16C1A325F82 /* ToggleStickyChecklistIntent.swift */; };
 		3342251C69703D2B700D2729 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 10898C7AF27BAAF615AB51D4 /* PrivacyInfo.xcprivacy */; };
 		35070ACA0412B1ECEC383B9E /* StickyIntents in Frameworks */ = {isa = PBXBuildFile; productRef = 036A5789EA3A618B0A05BF47 /* StickyIntents */; };
+		3699C8949300974753462AEC /* ScrapsLibraryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0802CD82A815A0135D4C96E /* ScrapsLibraryView.swift */; };
 		3FF135E3BDEE6D4A60E9FDA1 /* StickyDomain in Frameworks */ = {isa = PBXBuildFile; productRef = 5F429FB7387A4337F314E850 /* StickyDomain */; };
 		45CC7DAF05B9B496F3EBAD51 /* ScrapsWidgetsMobile.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = D35F5D0F821D27A9151A008B /* ScrapsWidgetsMobile.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		45FD3EE120A332D5002167D5 /* ScrapsWelcome.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23C522C217BE580F0DADE7CE /* ScrapsWelcome.swift */; };
@@ -145,6 +146,7 @@
 		8F1E856D136143B54EBF4BC9 /* WidgetStickyEntity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetStickyEntity.swift; sourceTree = "<group>"; };
 		92235E8BF1BC5B2EE9FD4276 /* ScrapsWidgets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScrapsWidgets.swift; sourceTree = "<group>"; };
 		9CB81B3966CD4735F1DDD2CA /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
+		A0802CD82A815A0135D4C96E /* ScrapsLibraryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScrapsLibraryView.swift; sourceTree = "<group>"; };
 		AA750E648A9C082DC8F0A2F8 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/AppShortcuts.strings; sourceTree = "<group>"; };
 		AC9EB86676959DC16391C28C /* Scraps.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Scraps.entitlements; sourceTree = "<group>"; };
 		AE86CF4432FED6E64039C96C /* ScrapsCaptureWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScrapsCaptureWidget.swift; sourceTree = "<group>"; };
@@ -225,6 +227,7 @@
 				75F11FBE19F9881418DE7905 /* ScrapsAppShortcuts.swift */,
 				8E7DF40B81F58A9B95800FE0 /* ScrapsCommands.swift */,
 				80293D65B6B7FB87FD68B1B7 /* ScrapsIntentsPackage.swift */,
+				A0802CD82A815A0135D4C96E /* ScrapsLibraryView.swift */,
 				434DB4ED9B397477D1EF07B5 /* ScrapsNewColorView.swift */,
 				02EE4DD6C74FA43686F6CA32 /* ScrapsRecentlyDeletedView.swift */,
 				5D5069DCF3D45C02D1C3D4DA /* ScrapsSettingsView.swift */,
@@ -558,6 +561,7 @@
 				854FAFEB5923B1F4939010D8 /* ScrapsApplicationDelegate.swift in Sources */,
 				D0E052A563BD3933111AE675 /* ScrapsCommands.swift in Sources */,
 				B227ADCA76630F2C8A192069 /* ScrapsIntentsPackage.swift in Sources */,
+				3699C8949300974753462AEC /* ScrapsLibraryView.swift in Sources */,
 				7315D4DFEB26E7DA84E1860C /* ScrapsNewColorView.swift in Sources */,
 				F8E131327828F75CCE4E7B10 /* ScrapsRecentlyDeletedView.swift in Sources */,
 				D1B7F03FDB2AB318F87B5934 /* ScrapsSettingsView.swift in Sources */,

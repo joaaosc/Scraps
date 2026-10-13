@@ -6,6 +6,7 @@ import SwiftUI
 struct StickyView: View {
     @Bindable var model: StickyModel
     @State private var isChoosingColor = false
+    @State private var showsTags = false
     @Environment(\.colorSchemeContrast) private var contrast
 
     var body: some View {
@@ -24,6 +25,10 @@ struct StickyView: View {
 
                     if let status = model.status {
                         StickyStatusLine(status: status)
+                        if case .failure = status {
+                            Button(String(localized: "Keep Edit as Copy", bundle: .module)) { StickyBoard.shared.recoverDraft(model.id) }
+                                .font(.caption).padding(.bottom, 8)
+                        }
                     }
                 }
                 .background {
@@ -36,7 +41,7 @@ struct StickyView: View {
                 footer
             }
         }
-        .disabled(model.isClosing)
+        .disabled(model.isClosing || model.isArchived)
         .overlay { StickyMetalAccent(trigger: model.id.uuidString + model.color.rawValue) }
     }
 
@@ -96,6 +101,11 @@ struct StickyView: View {
             Button(String(localized: "Color…", bundle: .module), systemImage: "paintpalette") {
                 isChoosingColor = true
             }
+            Toggle(String(localized: "Favorite", bundle: .module), systemImage: "star", isOn: $model.isPinned)
+            Button(String(localized: "Tags…", bundle: .module), systemImage: "tag") { showsTags = true }
+            Button(String(localized: "Duplicate", bundle: .module), systemImage: "doc.on.doc") { StickyBoard.shared.duplicate(model.id) }
+            Button(String(localized: "Archive", bundle: .module), systemImage: "archivebox") { StickyBoard.shared.setArchived(true, id: model.id) }
+            Divider()
             Toggle(String(localized: "Float on Top", bundle: .module), systemImage: "pin", isOn: $model.floatsOnTop)
                 .keyboardShortcut("f", modifiers: [.command, .option])
             Toggle(String(localized: "Show on All Spaces", bundle: .module), systemImage: "rectangle.on.rectangle", isOn: $model.appearsOnAllSpaces)
@@ -107,6 +117,7 @@ struct StickyView: View {
         }
         .menuIndicator(.hidden)
         .help(String(localized: "Color, window options, and sharing", bundle: .module))
+        .popover(isPresented: $showsTags) { StickyTagsEditor(tags: $model.tags) }
         .popover(isPresented: $isChoosingColor, arrowEdge: .bottom) {
             VStack(alignment: .leading, spacing: 8) {
                 Text(String(localized: "Sticky Color", bundle: .module))
@@ -126,6 +137,8 @@ struct StickyView: View {
                     .help(String(localized: "This sticky disappears when Scraps quits", bundle: .module))
             }
 
+            if !model.tags.isEmpty { Text(model.tags.map { "#" + $0 }.joined(separator: " ")).font(.caption2).lineLimit(1) }
+            if model.snapshot.conflictSourceID != nil { Image(systemName: "arrow.triangle.branch").accessibilityLabel(Text("Recovered Edit", bundle: .module)) }
             Spacer(minLength: 0)
 
             if model.isSharing {
