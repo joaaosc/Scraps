@@ -268,7 +268,7 @@ struct FileStickyStoreTests {
         }
     }
 
-    @Test("Version-one documents migrate and the next save writes version two")
+    @Test("Version-one documents migrate and the next save writes version three")
     func migratesVersionOne() async throws {
         let (store, directory) = try makeStore()
         defer { cleanUp(directory) }
@@ -292,7 +292,7 @@ struct FileStickyStoreTests {
 
         try await store.save(migrated)
         let document = try #require(JSONSerialization.jsonObject(with: Data(contentsOf: fileURL)) as? [String: Any])
-        #expect(document["version"] as? Int == 2)
+        #expect(document["version"] as? Int == 3)
         let reopened = try FileStickyStore(directoryURL: directory, announcesChanges: false)
         #expect(try await reopened.stickies() == [migrated])
     }
@@ -425,5 +425,87 @@ struct FileStickyStoreTests {
             try await store.delete(id: filenameID)
         }
         #expect(try Data(contentsOf: mismatched) == contents)
+    }
+
+    @Test("Storage preserves subsecond date precision and same-second edit order")
+    func datePrecision() async throws {
+        let (store, directory) = try makeStore()
+        defer { cleanUp(directory) }
+        let created = instant.addingTimeInterval(0.123456)
+        var sticky = Sticky(text: "First", createdAt: created)
+        try await store.save(sticky)
+        #expect(try await store.stickies() == [sticky])
+
+        sticky.edit(text: "Second", at: created.addingTimeInterval(0.4))
+        try await store.save(sticky)
+        #expect(try await store.stickies() == [sticky])
+        let deletion = created.addingTimeInterval(0.8)
+        try await store.moveToTrash(sticky, at: deletion)
+        #expect(try await store.recentlyDeleted().first?.deletedAt == deletion)
+        let reopened = try FileStickyStore(directoryURL: directory, announcesChanges: false)
+        #expect(try await reopened.restore(id: sticky.id) == sticky)
+    }
+
+    @Test("Version-two ISO dates and formatting migrate without changing note contents")
+    func migratesVersionTwo() async throws {
+        let (store, directory) = try makeStore()
+        defer { cleanUp(directory) }
+        let id = UUID()
+        let file = directory.appending(path: "\(id.uuidString).json")
+        let document = """
+        {"version":2,"sticky":{"id":"\(id.uuidString)","text":"Olá 😀 مرحبا",
+        "createdAt":"2027-01-15T08:00:00.125Z","updatedAt":"2027-01-15T08:01:00Z",
+        "color":"pink","richText":{"runs":[{"location":0,"length":3,"bold":true}]}}}
+        """
+        try Data(document.utf8).write(to: file)
+        let migrated = try #require(try await store.stickies().first)
+        #expect(migrated.text == "Olá 😀 مرحبا")
+        #expect(migrated.color == .pink)
+        #expect(migrated.updatedAt.timeIntervalSince(migrated.createdAt) == 59.875)
+        #expect(migrated.richText?.runs == [StickyTextRun(location: 0, length: 3, bold: true)])
+        try await store.save(migrated)
+        #expect(try await store.stickies() == [migrated])
+    }
+
+    @Test("Fractional deletion dates cannot make trash expire early")
+    func fractionalExpiry() async throws {
+        let (store, directory) = try makeStore()
+        defer { cleanUp(directory) }
+        let sticky = Sticky(text: "Still recoverable", createdAt: instant)
+        let deletion = instant.addingTimeInterval(0.75)
+        try await store.save(sticky)
+        try await store.moveToTrash(sticky, at: deletion)
+
+        try await store.purgeExpired(now: deletion.addingTimeInterval(FileStickyStore.trashRetentionInterval - 0.25))
+        #expect(try await store.recentlyDeleted().map(\.id) == [sticky.id])
+        try await store.purgeExpired(now: deletion.addingTimeInterval(FileStickyStore.trashRetentionInterval))
+        #expect(try await store.recentlyDeleted().isEmpty)
+    }
+
+    @Test("A stale save cannot overwrite a more recent durable edit")
+    func staleSaveConflict() async throws {
+        let (store, directory) = try makeStore()
+        defer { cleanUp(directory) }
+        let older = Sticky(text: "Older draft", createdAt: instant)
+        var newer = older
+        newer.edit(text: "Newer draft", at: instant.addingTimeInterval(60))
+        try await store.save(newer)
+
+        await #expect(throws: (any Error).self) { try await store.save(older) }
+        #expect(try await store.stickies() == [newer])
+    }
+
+    @Test("Closing a stale snapshot trashes the latest stored contents")
+    func staleTrashPreservesNewerEdit() async throws {
+        let (store, directory) = try makeStore()
+        defer { cleanUp(directory) }
+        let older = Sticky(text: "Old text", createdAt: instant)
+        var newer = older
+        newer.edit(text: "New text 😀", at: instant.addingTimeInterval(60))
+        try await store.save(newer)
+        try await store.moveToTrash(older, at: instant.addingTimeInterval(120))
+
+        #expect(try await store.recentlyDeleted().first?.text == newer.text)
+        #expect(try await store.restore(id: older.id) == newer)
     }
 }

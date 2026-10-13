@@ -41,8 +41,7 @@ struct ScrapsMobileApp: App {
         StickyActionRouter.handler = { action, text, color in
             switch action {
             case .newSticky, .newSessionSticky:
-                library.settingsRequested = false
-                library.colorPickerRequested = false
+                library.presentation = nil
                 guard let sticky = await library.newSticky(
                     text: text ?? "",
                     sessionOnly: action == .newSessionSticky,
@@ -50,19 +49,15 @@ struct ScrapsMobileApp: App {
                 ) else {
                     throw StickyActionRoutingError.appUnavailable
                 }
-                library.navigation = [sticky.id]
+                library.openSticky(id: sticky.id)
             case .newStickyInColor:
-                library.settingsRequested = false
-                library.colorPickerRequested = true
+                library.presentation = .colorPicker
             case .settings:
-                library.colorPickerRequested = false
-                library.settingsRequested = true
+                library.presentation = .settings
             }
         }
         StickyActionRouter.showAllHandler = {
-            library.settingsRequested = false
-            library.colorPickerRequested = false
-            library.navigation = []
+            library.showAll()
         }
     }
 

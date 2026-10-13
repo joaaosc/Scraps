@@ -22,10 +22,8 @@ xcodebuild -project Scraps.xcodeproj -scheme "$SCHEME" -configuration Release \
     -destination "$DESTINATION" -derivedDataPath build.noindex/DerivedData \
     -archivePath "build.noindex/Archives/$SCHEME.xcarchive" \
     archive CODE_SIGN_IDENTITY="$SIGNING_IDENTITY"
-if [ "$PLATFORM" = macOS ]; then
-    PRODUCT="build.noindex/Archives/$SCHEME.xcarchive/Products/Applications/Scraps.app"
-    codesign --verify --deep --strict "$PRODUCT"
-    codesign -d --entitlements - "$PRODUCT"
-    python3 Scripts/verify-product.py "$PRODUCT"
-fi
+PRODUCT="build.noindex/Archives/$SCHEME.xcarchive/Products/Applications/Scraps.app"
+codesign --verify --deep --strict "$PRODUCT"
+codesign -d --entitlements - "$PRODUCT"
+python3 Scripts/verify-product.py "$PRODUCT" --distribution
 echo "Archive ready in build.noindex/Archives/$SCHEME.xcarchive"

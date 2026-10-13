@@ -7,6 +7,7 @@ import OSLog
 public enum FileStickyStoreError: Error, Equatable, LocalizedError, Sendable {
     case limitReached(Int)
     case recentlyDeleted(UUID)
+    case newerEditExists(UUID)
 
     public var errorDescription: String? {
         switch self {
@@ -21,6 +22,11 @@ public enum FileStickyStoreError: Error, Equatable, LocalizedError, Sendable {
             NSLocalizedString(
                 "This sticky is in Recently Deleted. Restore it before editing it.",
                 bundle: .module, comment: "Late edit of a deleted note"
+            )
+        case .newerEditExists:
+            NSLocalizedString(
+                "A newer version of this sticky is already saved. Your edit remains open.",
+                bundle: .module, comment: "An older snapshot cannot replace a newer saved note"
             )
         }
     }
@@ -46,7 +52,7 @@ public actor FileStickyStore: RecentlyDeletedStickyStore {
         let sticky: Sticky
     }
 
-    private static let currentVersion = 2
+    private static let currentVersion = 3
     #if canImport(OSLog)
     private static let logger = Logger(
         subsystem: StickyKitIdentity.bundleIdentifier,
@@ -133,10 +139,14 @@ public actor FileStickyStore: RecentlyDeletedStickyStore {
         }
 
         try Self.coordinatedWrite(at: fileURL) { coordinatedURL in
-            if sticky.deletedAt == nil,
-               FileManager.default.fileExists(atPath: coordinatedURL.path),
-               try Self.readDocument(at: coordinatedURL).deletedAt != nil {
-                throw FileStickyStoreError.recentlyDeleted(sticky.id)
+            if FileManager.default.fileExists(atPath: coordinatedURL.path) {
+                let current = try Self.readDocument(at: coordinatedURL)
+                if sticky.deletedAt == nil, current.deletedAt != nil {
+                    throw FileStickyStoreError.recentlyDeleted(sticky.id)
+                }
+                if current.updatedAt > sticky.updatedAt {
+                    throw FileStickyStoreError.newerEditExists(sticky.id)
+                }
             }
             try Self.encode(sticky).write(to: coordinatedURL, options: .atomic)
         }
@@ -168,11 +178,20 @@ public actor FileStickyStore: RecentlyDeletedStickyStore {
     /// no remove-then-write interval in which a failure could lose the note.
     public func moveToTrash(_ sticky: Sticky, at date: Date) throws {
         let fileURL = Self.fileURL(for: sticky.id, in: directoryURL)
-        if FileManager.default.fileExists(atPath: fileURL.path),
-           try Self.coordinatedRead(at: fileURL).deletedAt != nil { return }
-        var trashed = sticky
-        trashed.deletedAt = date
-        try save(trashed)
+        try FileManager.default.createDirectory(at: directoryURL, withIntermediateDirectories: true)
+        var changed = false
+        try Self.coordinatedWrite(at: fileURL) { coordinatedURL in
+            var trashed = sticky
+            if FileManager.default.fileExists(atPath: coordinatedURL.path) {
+                let current = try Self.readDocument(at: coordinatedURL)
+                guard current.deletedAt == nil else { return }
+                if current.updatedAt > sticky.updatedAt { trashed = current }
+            }
+            trashed.deletedAt = date
+            try Self.encode(trashed).write(to: coordinatedURL, options: .atomic)
+            changed = true
+        }
+        if changed { announce() }
     }
 
     @discardableResult
@@ -317,7 +336,9 @@ public actor FileStickyStore: RecentlyDeletedStickyStore {
 
     private static func encode(_ sticky: Sticky) throws -> Data {
         let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
+        // Date's Codable representation uses seconds since 2001. Retaining
+        // its native reference epoch avoids rounding during epoch conversion.
+        encoder.dateEncodingStrategy = .deferredToDate
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         return try encoder.encode(Document(version: currentVersion, sticky: sticky))
     }
@@ -334,7 +355,20 @@ public actor FileStickyStore: RecentlyDeletedStickyStore {
 
     private static func decode(_ data: Data) throws -> Sticky {
         let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
+        decoder.dateDecodingStrategy = .custom { decoder in
+            let value = try decoder.singleValueContainer()
+            if let seconds = try? value.decode(Double.self), seconds.isFinite {
+                return Date(timeIntervalSinceReferenceDate: seconds)
+            }
+            let iso8601 = try value.decode(String.self)
+            if let date = try? Date(iso8601, strategy: .iso8601), date.timeIntervalSince1970.isFinite {
+                return date
+            }
+            if let date = try? Date(iso8601, strategy: .iso8601.time(includingFractionalSeconds: true)), date.timeIntervalSince1970.isFinite {
+                return date
+            }
+            throw DecodingError.dataCorruptedError(in: value, debugDescription: "Invalid sticky date")
+        }
         let document = try decoder.decode(Document.self, from: data)
         guard (1...currentVersion).contains(document.version) else {
             throw DecodingError.dataCorrupted(

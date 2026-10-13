@@ -36,8 +36,7 @@ struct MobileNewColorView: View {
                         creating = true
                         Task {
                             if let sticky = await library.newSticky(color: selection) {
-                                library.navigation.append(sticky.id)
-                                dismiss()
+                                library.openSticky(id: sticky.id)
                             }
                             creating = false
                         }

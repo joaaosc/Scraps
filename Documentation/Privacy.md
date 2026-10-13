@@ -8,6 +8,10 @@ abrir ajustes.
 Não há cadastro, rastreamento, publicidade, análise de uso ou coleta de dados.
 As notas de sessão ficam apenas na memória e desaparecem quando o app termina.
 
+O Scraps não sincroniza notas entre dispositivos. Backups configurados no
+sistema, como um backup do dispositivo ou Time Machine, podem incluir as notas
+persistentes. Apagar uma nota no app não remove cópias guardadas nesses backups.
+
 O compartilhamento usa a interface do sistema. O conteúdo só é entregue ao
 destino escolhido quando o compartilhamento é confirmado. As políticas desse
 destino passam a valer para a cópia recebida.
@@ -25,6 +29,10 @@ Scraps keeps your notes on your device. Note content is never sent to a server
 operated by the app or indexed by Spotlight. Only four fixed app actions are
 indexed. There are no accounts, analytics, advertising, tracking, or data
 collection. Session notes exist only in memory and disappear when the app quits.
+
+Scraps does not sync notes across devices. System backups you configure, such
+as device backups or Time Machine, may include persistent notes. Deleting a
+note in the app does not remove copies retained in those backups.
 
 Sharing uses the operating system's interface. Content is sent only to the
 destination you select when you confirm sharing. That destination's policies

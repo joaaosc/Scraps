@@ -40,10 +40,23 @@ public struct StickyActionEntity: IndexedEntity {
         )
     }
 
+    /// Siri's language and the app's preferred language can differ. Search
+    /// recognizes every translation shipped by the app, while the displayed
+    /// title continues to use the person's current language.
+    var searchTitles: [String] {
+        var resource = localizedTitle
+        var titles = [action.title, String(localized: resource)]
+        for language in Bundle.main.localizations where language != "Base" {
+            resource.locale = Locale(identifier: language)
+            titles.append(String(localized: resource))
+        }
+        return Array(Set(titles)).sorted()
+    }
+
     public var attributeSet: CSSearchableItemAttributeSet {
         let attributes = defaultAttributeSet
         attributes.rankingHint = NSNumber(value: action.priority)
-        attributes.keywords = [action.title, String(localized: localizedTitle)]
+        attributes.keywords = searchTitles
         return attributes
     }
 
@@ -75,11 +88,27 @@ public struct StickyActionQuery: EntityStringQuery, IndexedEntityQuery {
     }
 
     public func entities(matching string: String) async throws -> [StickyActionEntity] {
-        let localizedTitles = Dictionary(uniqueKeysWithValues: StickyAction.allCases.map { action in
-            (action, String(localized: StickyActionEntity(action: action).localizedTitle))
+        let localizedNames = Dictionary(uniqueKeysWithValues: StickyAction.allCases.map { action in
+            (action, StickyActionEntity(action: action).searchTitles)
         })
-        return StickyAction.matching(string, localizedTitles: localizedTitles)
+        return Self.matchingActions(string, localizedNames: localizedNames)
             .map(StickyActionEntity.init(action:))
+    }
+
+    static func matchingActions(
+        _ query: String,
+        localizedNames: [StickyAction: [String]]
+    ) -> [StickyAction] {
+        var matching = Set(StickyAction.matching(query))
+        for action in StickyAction.allCases where !matching.contains(action) {
+            for name in localizedNames[action] ?? [] {
+                if StickyAction.matching(query, localizedTitles: [action: name]).contains(action) {
+                    matching.insert(action)
+                    break
+                }
+            }
+        }
+        return StickyAction.allCases.filter { matching.contains($0) }
     }
 
     public func suggestedEntities() async throws -> [StickyActionEntity] {

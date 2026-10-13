@@ -34,13 +34,22 @@ final class ScrapsApplicationDelegate: NSObject, NSApplicationDelegate {
         return true
     }
 
-    /// Lets the open stickies write what they have not saved yet before the app
-    /// ends, waiting no longer than two seconds for it.
+    /// Gives pending writes two seconds to finish and keeps the app open when
+    /// saving fails or needs longer, so the editor's draft remains available.
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
-        guard StickyBoard.shared.hasOpenStickies else { return .terminateNow }
+        guard StickyBoard.shared.hasOpenStickies || StickyBoard.shared.hasPendingStoreOperations else { return .terminateNow }
         Task { @MainActor in
-            await StickyBoard.shared.flushAll(within: .seconds(2))
-            NSApplication.shared.reply(toApplicationShouldTerminate: true)
+            let saved = await StickyBoard.shared.flushAll(within: .seconds(2))
+            sender.reply(toApplicationShouldTerminate: saved)
+            if !saved {
+                sender.activate()
+                let alert = NSAlert()
+                alert.messageText = String(localized: "Scraps could not finish saving")
+                alert.informativeText = String(localized: "Your notes are still open. Check the save error or wait for saving to finish, then try quitting again.")
+                alert.addButton(withTitle: String(localized: "OK"))
+                alert.alertStyle = .warning
+                alert.runModal()
+            }
         }
         return .terminateLater
     }

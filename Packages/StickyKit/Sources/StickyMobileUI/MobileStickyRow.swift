@@ -33,6 +33,8 @@ struct MobileStickyRow: View {
             }
         }
         .padding(.vertical, 4)
+        .accessibilityElement(children: .combine)
+        .accessibilityValue(sticky.color.localizedName)
     }
 }
 #endif

@@ -14,9 +14,13 @@ public enum StickyRichTextBridge {
     public static func attributedText(text: String, richText: StickyRichText?) -> AttributedString {
         var result = AttributedString(text)
         for run in richText?.normalized(for: text).runs ?? [] {
-            guard let range = Range(NSRange(location: run.location, length: run.length), in: text),
-                  let lower = AttributedString.Index(range.lowerBound, within: result),
-                  let upper = AttributedString.Index(range.upperBound, within: result) else { continue }
+            // UTF-16 runs may end between the scalars of a composed character
+            // or emoji. String's grapheme-aware Range initializer drops those
+            // valid attributed-text boundaries.
+            let start = String.Index(utf16Offset: run.location, in: text)
+            let end = String.Index(utf16Offset: run.location + run.length, in: text)
+            guard let lower = AttributedString.Index(start, within: result),
+                  let upper = AttributedString.Index(end, within: result) else { continue }
             result[lower..<upper].font = canonicalFont(bold: run.bold, italic: run.italic)
         }
         return result
@@ -29,7 +33,7 @@ public enum StickyRichTextBridge {
         var runs: [StickyTextRun] = []
         var location = 0
         for run in text.runs {
-            let length = String(text[run.range].characters).utf16.count
+            let length = text[run.range].unicodeScalars.reduce(0) { $0 + ($1.value > 0xFFFF ? 2 : 1) }
             defer { location += length }
             guard let font = run.font else { continue }
             let style = emphasis(of: font, in: context)

@@ -140,3 +140,9 @@
 "You can recover deleted stickies from Recently Deleted." = "Recupere notas apagadas em Apagadas recentemente.";
 "Your Stickies" = "Suas notas";
 "Your notes" = "Suas notas";
+
+/* Saving and quitting: the app keeps drafts available on failure. */
+"Scraps could not finish saving" = "O Scraps não conseguiu concluir o salvamento";
+"Your notes are still open. Check the save error or wait for saving to finish, then try quitting again." = "Suas notas continuam abertas. Confira o erro de salvamento ou aguarde a conclusão e tente sair novamente.";
+"OK" = "OK";
+"A newer version of this sticky is already saved. Your edit remains open." = "Uma versão mais recente desta nota já foi salva. Sua edição continua aberta.";

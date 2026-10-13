@@ -45,6 +45,31 @@ struct StickyRichTextBridgeTests {
         #expect(StickyRichTextBridge.richText(from: text, in: context) == nil)
     }
 
+    @Test("Scalar boundaries inside combining accents and emoji preserve their original emphasis")
+    func emphasisInsideGraphemes() {
+        let samples: [(String, StickyRichText)] = [
+            ("e\u{301} café", StickyRichText(runs: [StickyTextRun(location: 1, length: 1, italic: true)])),
+            ("👩🏽‍💻", StickyRichText(runs: [StickyTextRun(location: 2, length: 2, bold: true)])),
+            ("مَرْحَبًا — שלום", StickyRichText(runs: [StickyTextRun(location: 1, length: 1, bold: true)])),
+        ]
+        for (text, emphasis) in samples {
+            let native = StickyRichTextBridge.attributedText(text: text, richText: emphasis)
+            #expect(String(native.characters) == text)
+            #expect(StickyRichTextBridge.richText(from: native, in: context) == emphasis)
+        }
+    }
+
+    @Test("Overlapping imported emphasis is combined before native display")
+    func overlappingEmphasis() {
+        let text = "Olá 😀 שלום"
+        let rich = StickyRichText(runs: [
+            StickyTextRun(location: 0, length: 6, bold: true),
+            StickyTextRun(location: 4, length: 7, italic: true),
+        ])
+        let native = StickyRichTextBridge.attributedText(text: text, richText: rich)
+        #expect(StickyRichTextBridge.richText(from: native, in: context) == rich.normalized(for: text))
+    }
+
     @Test("Imported family and size become body text while preserving emphasis")
     func importedFontKeepsEmphasis() {
         var attributes = AttributeContainer()

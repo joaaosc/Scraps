@@ -6,7 +6,6 @@ import SwiftUI
 public struct MobileStickyRootView: View {
     @Bindable private var library: MobileStickyLibrary
     @State private var search = ""
-    @State private var showsTrash = false
     @State private var creating = false
     @AppStorage("mobileShowsList") private var showsList = false
     @Environment(\.scenePhase) private var scenePhase
@@ -55,10 +54,10 @@ public struct MobileStickyRootView: View {
                             Text(showsList ? LocalizedStringKey("View as Grid") : LocalizedStringKey("View as List"), bundle: .module)
                         } icon: { Image(systemName: showsList ? "square.grid.2x2" : "list.bullet") }
                     }
-                    Button { showsTrash = true } label: {
+                    Button { library.presentation = .recentlyDeleted } label: {
                         Label { Text("Recently Deleted", bundle: .module) } icon: { Image(systemName: "trash") }
                     }
-                    Button { library.settingsRequested = true } label: {
+                    Button { library.presentation = .settings } label: {
                         Label { Text("Settings", bundle: .module) } icon: { Image(systemName: "gearshape") }
                     }
                 }
@@ -70,7 +69,7 @@ public struct MobileStickyRootView: View {
                         Button { createSticky(sessionOnly: true) } label: {
                             Label { Text("New Sticky (This Session Only)", bundle: .module) } icon: { Image(systemName: "clock") }
                         }
-                        Button { library.colorPickerRequested = true } label: {
+                        Button { library.presentation = .colorPicker } label: {
                             Label { Text("New Sticky in Color…", bundle: .module) } icon: { Image(systemName: "paintpalette") }
                         }
                     } label: {
@@ -87,9 +86,13 @@ public struct MobileStickyRootView: View {
             }
             .refreshable { await library.reload() }
         }
-        .sheet(isPresented: $showsTrash) { MobileRecentlyDeletedView(library: library) }
-        .sheet(isPresented: $library.settingsRequested) { MobileStickySettingsView() }
-        .sheet(isPresented: $library.colorPickerRequested) { MobileNewColorView(library: library) }
+        .sheet(item: $library.presentation) { presentation in
+            switch presentation {
+            case .recentlyDeleted: MobileRecentlyDeletedView(library: library)
+            case .settings: MobileStickySettingsView()
+            case .colorPicker: MobileNewColorView(library: library)
+            }
+        }
         .alert("Scraps", item: $library.notice) { _ in
         } message: { notice in
             Text(notice.message)
@@ -148,7 +151,7 @@ public struct MobileStickyRootView: View {
         guard !creating else { return }
         creating = true
         Task {
-            if let sticky = await library.newSticky(sessionOnly: sessionOnly) { library.navigation.append(sticky.id) }
+            if let sticky = await library.newSticky(sessionOnly: sessionOnly) { library.openSticky(id: sticky.id) }
             creating = false
         }
     }

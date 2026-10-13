@@ -105,11 +105,48 @@ struct StickyBoardFlushTests {
     func emptyBoard() async {
         let board = StickyBoard()
 
-        await board.flushAll()
-        await board.flushAll(within: .seconds(30))
+        #expect(await board.flushAll())
+        #expect(await board.flushAll(within: .seconds(30)))
 
         #expect(!board.hasOpenStickies)
     }
+
+    @Test("Quitting waits for a newly created note and a timeout preserves the pending write")
+    func creationTimeout() async throws {
+        let store = DelayedCreationStore()
+        let board = StickyBoard()
+        board.connect(to: store)
+        let creation = Task { try await board.addSticky(text: "Pending thought") }
+        await store.waitForSave()
+        #expect(board.hasPendingStoreOperations)
+        #expect(!(await board.flushAll(within: .milliseconds(20))))
+        #expect(board.hasPendingStoreOperations)
+        await store.releaseSave()
+        try await creation.value
+        #expect(await board.flushAll())
+        #expect(await store.stickies().map(\.text) == ["Pending thought"])
+    }
+}
+
+private actor DelayedCreationStore: StickyStore {
+    private var note: Sticky?
+    private var entered = false
+    private var waiter: CheckedContinuation<Void, Never>?
+    private var gate: CheckedContinuation<Void, Never>?
+
+    func waitForSave() async {
+        if entered { return }
+        await withCheckedContinuation { waiter = $0 }
+    }
+    func releaseSave() { gate?.resume(); gate = nil }
+    func stickies() -> [Sticky] { note.map { [$0] } ?? [] }
+    func save(_ sticky: Sticky) async {
+        entered = true
+        waiter?.resume(); waiter = nil
+        await withCheckedContinuation { gate = $0 }
+        note = sticky
+    }
+    func delete(id: UUID) { note = nil }
 }
 
 @MainActor
@@ -307,6 +344,8 @@ struct StickyModelTests {
         var failSaves = false
         var blocksSaves = false
         var blockedSave: CheckedContinuation<Void, Never>?
+        var blocksTrash = false
+        var blockedTrash: CheckedContinuation<Void, Never>?
 
         func save(_ sticky: Sticky) async throws {
             if blocksSaves {
@@ -322,7 +361,8 @@ struct StickyModelTests {
             events.append("delete")
         }
 
-        func moveToTrash(_ sticky: Sticky) throws {
+        func moveToTrash(_ sticky: Sticky) async throws {
+            if blocksTrash { await withCheckedContinuation { blockedTrash = $0 } }
             if failTrash { throw CocoaError(.fileWriteUnknown) }
             trashed.append(sticky)
             events.append("trash")
@@ -332,6 +372,8 @@ struct StickyModelTests {
             blockedSave?.resume()
             blockedSave = nil
         }
+
+        func releaseTrash() { blockedTrash?.resume(); blockedTrash = nil }
     }
 
     private func makeModel(
@@ -425,6 +467,42 @@ struct StickyModelTests {
         await model.flush().value
 
         #expect(spy.saved.isEmpty)
+    }
+
+    @Test("Flushing includes the latest recovery snapshot of a close in progress")
+    func flushWaitsForClose() async {
+        let spy = Spy()
+        spy.blocksTrash = true
+        let model = makeModel(text: "Original", spy: spy, autosave: .seconds(600), recoverable: true)
+        model.text = "Latest café 👩🏽‍💻"
+        let close = model.requestClose()
+        #expect(await eventually { spy.blockedTrash != nil })
+        #expect(model.isClosing)
+        #expect(model.hasUnsavedChanges)
+        var drained = false
+        let drain = Task { await model.flush().value; drained = true }
+        await Task.yield()
+        #expect(!drained)
+        spy.releaseTrash()
+        await close.value
+        await drain.value
+        #expect(drained)
+        #expect(!model.hasUnsavedChanges)
+        #expect(spy.trashed.map(\.text) == ["Latest café 👩🏽‍💻"])
+    }
+
+    @Test("Window changes preserve an existing future modification date")
+    func windowChangesKeepFutureTimestamp() async {
+        let spy = Spy()
+        let future = Date().addingTimeInterval(86_400)
+        let note = Sticky(text: "Future", createdAt: future, updatedAt: future.addingTimeInterval(60))
+        let model = StickyModel(sticky: note, dependencies: .init(
+            save: { try await spy.save($0) }, delete: { await spy.delete($0) },
+            share: { _, _, _ in }, closeWindow: {}, applyLevel: { _ in }, copyToPasteboard: { _ in }
+        ))
+        model.color = .pink
+        await model.flush().value
+        #expect(spy.saved.first?.updatedAt == note.updatedAt)
     }
 
     @Test("Where the window was left is saved with the same delay")

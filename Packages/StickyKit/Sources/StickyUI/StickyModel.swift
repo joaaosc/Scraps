@@ -80,6 +80,7 @@ public final class StickyModel {
     }
     public private(set) var status: Status?
     public private(set) var isSharing = false
+    public private(set) var isClosing = false
     public var isConfirmingDelete = false
     public let startsFocused: Bool
     public let isSessionOnly: Bool
@@ -98,6 +99,8 @@ public final class StickyModel {
     @ObservationIgnored private var autosaveTask: Task<Void, Never>?
     @ObservationIgnored private var statusTask: Task<Void, Never>?
     @ObservationIgnored private var lastSave: Task<Void, Never>?
+    @ObservationIgnored private var closeTask: Task<Void, Never>?
+    @ObservationIgnored private var pendingWrites = 0
     @ObservationIgnored private var isDirty = false
     @ObservationIgnored private var isDeleted = false
 
@@ -129,7 +132,7 @@ public final class StickyModel {
 
     public var id: UUID { base.id }
     public var title: String {
-        let firstLine = text.components(separatedBy: .newlines).first ?? ""
+        let firstLine = String(text.prefix { !$0.isNewline })
         let line = firstLine.trimmingCharacters(in: .whitespaces)
         return line.isEmpty ? String(localized: "Untitled", bundle: .module) : line
     }
@@ -213,13 +216,24 @@ public final class StickyModel {
     /// memory; persistent notes go to Recently Deleted without a question.
     @discardableResult
     public func requestClose() -> Task<Void, Never> {
-        Task { await deleteAndClose() }
+        if let closeTask { return closeTask }
+        guard !isDeleted else { return Task {} }
+        isClosing = true
+        let close = Task {
+            await performClose()
+            isClosing = false
+            closeTask = nil
+        }
+        closeTask = close
+        return close
     }
 
     @discardableResult
     func confirmDelete() -> Task<Void, Never> { requestClose() }
 
-    func deleteAndClose() async {
+    func deleteAndClose() async { await requestClose().value }
+
+    private func performClose() async {
         guard !isDeleted else { return }
         isDeleted = true
         autosaveTask?.cancel()
@@ -233,6 +247,7 @@ public final class StickyModel {
             dependencies.closeWindow()
         } catch {
             isDeleted = false
+            isClosing = false
             // A failed close keeps the editor alive. Resume the save cancelled
             // for deletion so its pending text remains safe without another edit.
             if isDirty { scheduleSave() }
@@ -258,7 +273,7 @@ public final class StickyModel {
     private func scheduleSave() {
         guard !isDeleted else { return }
         isDirty = true
-        base.updatedAt = max(Date(), base.createdAt)
+        base.updatedAt = max(Date(), max(base.createdAt, base.updatedAt))
         let now = ContinuousClock.now
         let first = firstUnsavedChange ?? now
         firstUnsavedChange = first
@@ -273,11 +288,25 @@ public final class StickyModel {
         }
     }
 
+    /// Includes a close that is still writing its recovery snapshot. If that
+    /// close fails, its pending edit is saved before this drain completes.
     @discardableResult
     public func flush() -> Task<Void, Never> {
         autosaveTask?.cancel()
+        if let closeTask {
+            return Task {
+                await closeTask.value
+                if !isDeleted { await flush().value }
+            }
+        }
         if isDirty { commit() }
         return lastSave ?? Task {}
+    }
+
+    /// Checked after draining writes, including edits made while a previous
+    /// save was in flight. A successful recovery write also protects the text.
+    var hasUnsavedChanges: Bool {
+        isClosing || (!isDeleted && (isDirty || pendingWrites > 0))
     }
 
     private func commit() {
@@ -287,9 +316,12 @@ public final class StickyModel {
         let sticky = snapshot
         let previous = lastSave
         let save = dependencies.save
+        pendingWrites += 1
         lastSave = Task { [weak self] in
             await previous?.value
-            guard let self, !isDeleted else { return }
+            guard let self else { return }
+            defer { pendingWrites -= 1 }
+            guard !isDeleted else { return }
             do {
                 try await save(sticky)
                 saveDidSucceed()

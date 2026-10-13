@@ -158,4 +158,21 @@ struct StickyTests {
         )
         #expect(sticky.updatedAt == latest)
     }
+
+    @Test("Overlapping emphasis combines bold and italic without losing either style")
+    func overlappingEmphasis() {
+        let text = "A😀BCD"
+        let richText = StickyRichText(runs: [
+            StickyTextRun(location: 0, length: 5, bold: true),
+            StickyTextRun(location: 1, length: 5, italic: true),
+            StickyTextRun(location: 0, length: 5, bold: true),
+        ])
+        let normalized = richText.normalized(for: text)
+        #expect(normalized.runs == [
+            StickyTextRun(location: 0, length: 1, bold: true),
+            StickyTextRun(location: 1, length: 4, bold: true, italic: true),
+            StickyTextRun(location: 5, length: 1, italic: true),
+        ])
+        #expect(normalized.normalized(for: text) == normalized)
+    }
 }

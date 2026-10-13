@@ -48,10 +48,16 @@ struct ScrapsSettingsView: View {
                     .font(.caption).foregroundStyle(.secondary)
             }
             Section {
-                LabeledContent("Scraps", value: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0")
+                LabeledContent("Version", value: version)
             }
         }
         .formStyle(.grouped)
         .padding(8)
+    }
+
+    private var version: String {
+        let marketing = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—"
+        let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "—"
+        return "\(marketing) (\(build))"
     }
 }

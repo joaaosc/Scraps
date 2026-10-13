@@ -140,3 +140,9 @@
 "You can recover deleted stickies from Recently Deleted." = "You can recover deleted stickies from Recently Deleted.";
 "Your Stickies" = "Your Stickies";
 "Your notes" = "Your notes";
+
+/* Saving and quitting: the app keeps drafts available on failure. */
+"Scraps could not finish saving" = "Scraps could not finish saving";
+"Your notes are still open. Check the save error or wait for saving to finish, then try quitting again." = "Your notes are still open. Check the save error or wait for saving to finish, then try quitting again.";
+"OK" = "OK";
+"A newer version of this sticky is already saved. Your edit remains open." = "A newer version of this sticky is already saved. Your edit remains open.";

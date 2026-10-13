@@ -40,7 +40,7 @@ struct MobileStickySettingsView: View {
                 }
                 Section {
                     LabeledContent {
-                        Text(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0")
+                        Text(version)
                     } label: {
                         Text("Version", bundle: .module)
                     }
@@ -53,6 +53,12 @@ struct MobileStickySettingsView: View {
                 }
             }
         }
+    }
+
+    private var version: String {
+        let marketing = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—"
+        let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "—"
+        return "\(marketing) (\(build))"
     }
 }
 #endif

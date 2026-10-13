@@ -11,14 +11,9 @@ import StickyEditor
 /// When the Notes service is missing or refuses the text, the system's sharing
 /// picker is offered instead and the result is not described as Notes.
 @MainActor
-final class NotesSharer: NSObject, NSSharingServiceDelegate, @MainActor NSSharingServicePickerDelegate {
-    private weak var window: NSWindow?
-    private var route: NotesSharingAvailability.Route = .notes
-    private var completion: ((NotesSharingAvailability.Outcome) -> Void)?
-    /// Held until the share ends: both are released by AppKit as soon as
-    /// nothing references them, which would close the sheet.
-    private var activeService: NSSharingService?
-    private var activePicker: NSSharingServicePicker?
+final class NotesSharer {
+    /// Owns the request and its service/picker until the system finishes it.
+    private var operation: NotesShareOperation?
 
     /// - Parameters:
     ///   - anchor: where the sending button is, in the window's content
@@ -31,9 +26,7 @@ final class NotesSharer: NSObject, NSSharingServiceDelegate, @MainActor NSSharin
         anchor: CGRect,
         completion: @escaping (NotesSharingAvailability.Outcome) -> Void
     ) {
-        finish(with: .cancelled)
-        self.window = window
-        self.completion = completion
+        operation?.cancel()
 
         // A non-activating panel is fragile as a sharing source: the sheet
         // needs the window to be key, and that needs the app to be active.
@@ -50,21 +43,21 @@ final class NotesSharer: NSObject, NSSharingServiceDelegate, @MainActor NSSharin
         let plainItems: [Any] = [text]
         let items = richText != nil && (service?.canPerform(withItems: richItems) ?? false)
             ? richItems : plainItems
-        route = NotesSharingAvailability.route(
+        let route = NotesSharingAvailability.route(
             serviceFound: service != nil,
             canPerformWithText: service?.canPerform(withItems: items) ?? false
         )
+        let operation = NotesShareOperation(window: window, route: route, completion: completion)
+        self.operation = operation
 
         switch route {
         case .notes:
             guard let service else { return }
-            service.delegate = self
-            activeService = service
+            operation.use(service)
             service.perform(withItems: items)
         case .picker:
             let picker = NSSharingServicePicker(items: richText == nil ? plainItems : richItems)
-            picker.delegate = self
-            activePicker = picker
+            operation.use(picker)
             if let contentView = window.contentView {
                 // Content coordinates are flipped relative to AppKit's.
                 let flipped = CGRect(
@@ -75,57 +68,9 @@ final class NotesSharer: NSObject, NSSharingServiceDelegate, @MainActor NSSharin
                 )
                 picker.show(relativeTo: flipped, of: contentView, preferredEdge: .minY)
             } else {
-                finish(with: .failed(String(localized: "Could not open the sharing menu.", bundle: .module)))
+                operation.failToOpenPicker()
             }
         }
     }
 
-    private func finish(with outcome: NotesSharingAvailability.Outcome) {
-        let completion = completion
-        self.completion = nil
-        activeService = nil
-        activePicker = nil
-        completion?(outcome)
-    }
-
-    // MARK: NSSharingServiceDelegate
-
-    func sharingService(
-        _ sharingService: NSSharingService,
-        sourceWindowForShareItems items: [Any],
-        sharingContentScope: UnsafeMutablePointer<NSSharingService.SharingContentScope>
-    ) -> NSWindow? {
-        window
-    }
-
-    func sharingService(_ sharingService: NSSharingService, didShareItems items: [Any]) {
-        finish(with: .sent(route))
-    }
-
-    func sharingService(
-        _ sharingService: NSSharingService,
-        didFailToShareItems items: [Any],
-        error: Error
-    ) {
-        finish(with: NotesSharingAvailability.outcome(for: error, route: route))
-    }
-
-    // MARK: NSSharingServicePickerDelegate
-
-    func sharingServicePicker(
-        _ sharingServicePicker: NSSharingServicePicker,
-        delegateFor sharingService: NSSharingService
-    ) -> (any NSSharingServiceDelegate)? {
-        self
-    }
-
-    func sharingServicePicker(
-        _ sharingServicePicker: NSSharingServicePicker,
-        didChoose service: NSSharingService?
-    ) {
-        // Choosing a service hands control to its own delegate callbacks above.
-        if service == nil {
-            finish(with: .cancelled)
-        }
-    }
 }

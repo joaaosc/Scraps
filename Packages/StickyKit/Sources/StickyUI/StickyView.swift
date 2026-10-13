@@ -36,6 +36,7 @@ struct StickyView: View {
                 footer
             }
         }
+        .disabled(model.isClosing)
     }
 
     private var header: some View {

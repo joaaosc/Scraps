@@ -58,5 +58,23 @@ Keywords: sticky,notes,reminders,scratchpad,lists,tasks,stickies
 7. No formulário de privacidade, declarar que o app não coleta dados. Conferir
    novamente caso um serviço externo seja adicionado.
 
+## Disponibilidade internacional
+
+O app inclui interface e atalhos em inglês e português do Brasil. Cadastrar
+os textos acima como inglês dos EUA e português do Brasil no App Store Connect;
+outros territórios recebem o idioma de fallback disponível. Os limites são
+30 caracteres para nome/subtítulo e 100 para palavras-chave.
+
+Usar o mesmo registro do app para Mac, iPhone e iPad, com o bundle identifier
+`com.joaocosta.Scraps`, se a distribuição incluir compra universal. Isso não
+ativa sincronização entre dispositivos. O requisito macOS/iOS/iPadOS 27 deve
+aparecer na listagem; o app Mac é destinado a Apple silicon.
+
+Antes de habilitar territórios, definir no App Store Connect os países de
+distribuição, preço, classificação etária e informações fiscais/comerciais da
+conta. Para distribuição na União Europeia, declarar o status de comerciante
+e preencher os dados solicitados pela Apple. As URLs de suporte e privacidade
+devem estar acessíveis publicamente aos usuários dos territórios selecionados.
+
 Os artefatos de desenvolvimento têm assinatura ad hoc. Eles não substituem um
 arquivo assinado para distribuição. Nenhum envio ou publicação é automatizado.

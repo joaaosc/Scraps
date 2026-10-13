@@ -7,6 +7,68 @@ import Testing
 @Suite("Mobile sticky library")
 @MainActor
 struct MobileStickyLibraryTests {
+    @Test("Changing color preserves a future modification timestamp")
+    func colorKeepsMonotonicTimestamp() async throws {
+        let future = Date().addingTimeInterval(86_400)
+        let sticky = Sticky(text: "A future thought", createdAt: future, updatedAt: future.addingTimeInterval(100), color: .yellow)
+        let durable = MemoryStickyStore(stickies: [sticky])
+        let library = MobileStickyLibrary(store: SessionStickyStore(durable: durable))
+        await library.reload()
+
+        library.setColor(.blue, id: sticky.id)
+        await library.flush()
+
+        #expect(library.sticky(id: sticky.id)?.updatedAt == sticky.updatedAt)
+        #expect(await durable.stickies().first?.updatedAt == sticky.updatedAt)
+    }
+
+    @Test("A repeated recovery cannot replace a newer unsaved draft")
+    func repeatedRecoveryKeepsDraft() async throws {
+        let durable = MemoryStickyStore()
+        let library = MobileStickyLibrary(store: SessionStickyStore(durable: durable))
+        let sticky = try #require(await library.newSticky(text: "Original"))
+        #expect(await library.moveToTrash(id: sticky.id))
+        await library.restore(id: sticky.id)
+        library.edit(id: sticky.id, text: "Edited after recovery", richText: nil)
+
+        await library.restore(id: sticky.id)
+
+        #expect(library.sticky(id: sticky.id)?.text == "Edited after recovery")
+        await library.flush()
+        #expect(await durable.stickies().first?.text == "Edited after recovery")
+    }
+
+    @Test("An outdated permanent-delete action cannot remove a recovered sticky")
+    func outdatedDeleteKeepsRecoveredSticky() async throws {
+        let durable = MemoryStickyStore()
+        let library = MobileStickyLibrary(store: SessionStickyStore(durable: durable))
+        let sticky = try #require(await library.newSticky(text: "Keep this thought"))
+        #expect(await library.moveToTrash(id: sticky.id))
+        await library.restore(id: sticky.id)
+
+        await library.permanentlyDelete(id: sticky.id)
+
+        #expect(await durable.stickies().first?.id == sticky.id)
+        #expect(library.sticky(id: sticky.id) != nil)
+    }
+
+    @Test("Opening a sticky from an app action dismisses Recently Deleted without losing drafts")
+    func appActionClosesTrash() async throws {
+        let durable = MemoryStickyStore()
+        let library = MobileStickyLibrary(store: SessionStickyStore(durable: durable))
+        let original = try #require(await library.newSticky(text: "Original"))
+        library.edit(id: original.id, text: "Still editing", richText: nil)
+        library.presentation = .recentlyDeleted
+        let created = try #require(await library.newSticky(text: "From Shortcuts"))
+
+        library.openSticky(id: created.id)
+
+        #expect(library.presentation == nil)
+        #expect(library.navigation == [created.id])
+        await library.flush()
+        #expect(await durable.stickies().contains { $0.id == original.id && $0.text == "Still editing" })
+    }
+
     @Test("Session editing never creates a durable note")
     func sessionStaysInMemory() async throws {
         let durable = MemoryStickyStore()

@@ -35,6 +35,22 @@ Instalar com `Scripts/dev-install.sh` e conferir:
 
 ## iPhone e iPad
 
+1. Atualizar a `main` e executar `xcodegen generate` e `open Scraps.xcodeproj`.
+2. No Xcode 27, selecionar o scheme **ScrapsMobile** e um simulador de iPhone
+   com iOS 27. Executar com ⌘R. Repetir com um iPad para conferir janelas,
+   rotação e teclado externo. O simulador não exige perfil de distribuição.
+3. Para um aparelho real, conectar ao Mac, selecionar o destino no Xcode e
+   conferir **Signing & Capabilities**: equipe da conta e assinatura automática.
+   Habilitar Modo de Desenvolvedor no aparelho se solicitado e executar com ⌘R.
+4. Para TestFlight, executar `Scripts/archive.sh iOS`, validar no Organizer e
+   escolher **Distribute App → App Store Connect**. O envio exige cadastro,
+   certificado e perfil da equipe. Criar grupos/testadores no TestFlight após
+   o processamento do build; testes externos podem depender de revisão da Apple.
+
+Em **Edit Scheme → Run → Options**, selecionar **App Language** e **App Region**
+para testar inglês/português independentemente do idioma do Mac. Os testes de
+interação e de dispositivo abaixo são manuais.
+
 - [ ] Grade, lista e busca funcionam em retrato/paisagem e em janelas estreitas
   do iPad, inclusive com texto aumentado.
 - [ ] Criar, editar, fechar e recuperar uma nota mantém seu conteúdo.
@@ -43,6 +59,20 @@ Instalar com `Scripts/dev-install.sh` e conferir:
   aceita RTF; destinos de texto recebem as mesmas palavras.
 - [ ] Notas de sessão desaparecem quando o app é encerrado.
 - [ ] VoiceOver identifica ações, cores e estados de salvamento.
+- [ ] Notas com `café`, `é`, `👩🏽‍💻`, `日本語` e `مَرْحَبًا — שלום` mantêm texto
+  e ênfase após reabrir e compartilhar. Conferir RTL e texto misto.
+- [ ] Com Siri em português e o app em inglês, criar/abrir ações continua
+  funcionando. Repetir com app em português e Siri em inglês.
+- [ ] Abrir uma ação enquanto Apagadas recentemente está visível fecha a
+  folha e mostra a nota solicitada, sem apresentar duas folhas simultâneas.
+
+## Atualização e salvamento no Mac
+
+- [ ] A nova instalação mostra **1.0.0 (3)** no Terminal e abre a cópia em
+  `/Applications`. Os dados existentes reaparecem.
+- [ ] Editar e sair imediatamente mantém a última edição ao abrir novamente.
+- [ ] Fechar uma nota editada e sair imediatamente mantém o conteúdo na
+  recuperação. Se o salvamento falhar, o app permanece aberto com a mensagem.
 
 ## Distribuição
 

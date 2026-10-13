@@ -24,6 +24,9 @@ public actor MemoryStickyStore: RecentlyDeletedStickyStore {
         if sticky.deletedAt == nil, notes[sticky.id]?.deletedAt != nil {
             throw FileStickyStoreError.recentlyDeleted(sticky.id)
         }
+        if let current = notes[sticky.id], current.updatedAt > sticky.updatedAt {
+            throw FileStickyStoreError.newerEditExists(sticky.id)
+        }
         if sticky.deletedAt == nil, notes[sticky.id] == nil, stickies().count >= limit {
             throw FileStickyStoreError.limitReached(limit)
         }
@@ -46,6 +49,7 @@ public actor MemoryStickyStore: RecentlyDeletedStickyStore {
     public func moveToTrash(_ sticky: Sticky, at date: Date) {
         guard notes[sticky.id]?.deletedAt == nil else { return }
         var trashed = sticky
+        if let current = notes[sticky.id], current.updatedAt > sticky.updatedAt { trashed = current }
         trashed.deletedAt = date
         notes[sticky.id] = trashed
         StickyChanges.notifyInProcess()

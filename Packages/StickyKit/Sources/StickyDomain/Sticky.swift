@@ -71,7 +71,7 @@ public struct Sticky: Codable, Equatable, Identifiable, Sendable {
     }
 
     public var title: String {
-        let firstLine = text.components(separatedBy: .newlines).first ?? ""
+        let firstLine = String(text.prefix { !$0.isNewline })
         let title = firstLine.trimmingCharacters(in: .whitespaces)
         return title.isEmpty
             ? NSLocalizedString("Untitled", bundle: .module, comment: "A note with a blank first line")

@@ -114,4 +114,60 @@ struct SessionStickyStoreTests {
         await store.delete(id: active.id)
         #expect(try await store.restore(id: recoverable.id) == recoverable)
     }
+
+    @Test("An edit during session conversion is retained in the durable note")
+    func editDuringConversion() async throws {
+        let durable = DelayedDurableStore()
+        let store = SessionStickyStore(durable: durable)
+        let original = Sticky(text: "Session draft", createdAt: instant)
+        try await store.createSession(original)
+        let conversion = Task { try await store.makeDurable(id: original.id) }
+        await durable.waitForSave()
+        var edited = original
+        edited.edit(text: "Latest café 👩🏽‍💻", at: instant.addingTimeInterval(1))
+        let edit = Task { try await store.save(edited) }
+        try await Task.sleep(for: .milliseconds(10))
+        await durable.releaseSave()
+        try await conversion.value
+        try await edit.value
+        #expect(try await store.stickies() == [edited])
+        #expect(try await durable.stickies() == [edited])
+        #expect(!(await store.isSessionOnly(id: edited.id)))
+    }
+
+    @Test("Memory snapshots cannot replace a newer edit when saving or closing")
+    func memoryKeepsNewerSnapshot() async throws {
+        let older = Sticky(text: "Old draft", createdAt: instant)
+        var newer = older
+        newer.edit(text: "New draft", at: instant.addingTimeInterval(1))
+        let store = MemoryStickyStore(stickies: [newer])
+        await #expect(throws: FileStickyStoreError.newerEditExists(older.id)) {
+            try await store.save(older)
+        }
+        await store.moveToTrash(older, at: instant.addingTimeInterval(2))
+        #expect(try await store.restore(id: older.id) == newer)
+    }
+}
+
+private actor DelayedDurableStore: StickyStore {
+    private let memory = MemoryStickyStore()
+    private var entered = false
+    private var waiter: CheckedContinuation<Void, Never>?
+    private var gate: CheckedContinuation<Void, Never>?
+
+    func waitForSave() async {
+        if entered { return }
+        await withCheckedContinuation { waiter = $0 }
+    }
+    func releaseSave() { gate?.resume(); gate = nil }
+    func stickies() async throws -> [Sticky] { await memory.stickies() }
+    func save(_ sticky: Sticky) async throws {
+        if !entered {
+            entered = true
+            waiter?.resume(); waiter = nil
+            await withCheckedContinuation { gate = $0 }
+        }
+        try await memory.save(sticky)
+    }
+    func delete(id: UUID) async throws { await memory.delete(id: id) }
 }

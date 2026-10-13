@@ -36,6 +36,7 @@ public final class StickyBoard {
     @ObservationIgnored private var closedHere: Set<UUID> = []
     @ObservationIgnored private var observation: Task<Void, Never>?
     @ObservationIgnored private var maintenance: Task<Void, Never>?
+    @ObservationIgnored private var creations: [UUID: Task<Void, any Error>] = [:]
     @ObservationIgnored private var shortcut: StickyGlobalShortcut?
     @ObservationIgnored private let defaults: UserDefaults
 
@@ -50,9 +51,11 @@ public final class StickyBoard {
     }
 
     public var activeModel: StickyModel? {
-        activeStickyID.flatMap { controllers[$0]?.model }
+        guard let model = activeStickyID.flatMap({ controllers[$0]?.model }), !model.isClosing else { return nil }
+        return model
     }
     public var hasOpenStickies: Bool { !openStickies.isEmpty }
+    public var hasPendingStoreOperations: Bool { !creations.isEmpty }
 
     public func connect(to store: any StickyStore) {
         guard self.store == nil else { return }
@@ -107,11 +110,16 @@ public final class StickyBoard {
         )
         focusOnOpen.insert(sticky.id)
         if sessionOnly { sessionIDs.insert(sticky.id) }
-        do {
+        let creation = Task {
             try await target.save(sticky)
-            // In-memory writes have no distributed file announcement. This
-            // also makes creation immediate when a store delays announcements.
+            // Creation also reconciles memory writes and stores whose change
+            // announcements arrive later than the write itself.
             if observation != nil { await reconcile() }
+        }
+        creations[sticky.id] = creation
+        defer { creations[sticky.id] = nil }
+        do {
+            try await creation.value
         } catch {
             focusOnOpen.remove(sticky.id)
             sessionIDs.remove(sticky.id)
@@ -280,17 +288,32 @@ public final class StickyBoard {
         openStickies = controllers.values.map(\.model.snapshot).sorted { $0.createdAt < $1.createdAt }
     }
 
-    public func flushAll() async {
-        let writes = controllers.values.map { $0.model.flush() }
+    @discardableResult
+    public func flushAll() async -> Bool {
+        var saved = true
+        let pendingCreations = creations
+        for (id, creation) in pendingCreations {
+            do { try await creation.value }
+            catch { saved = false }
+            creations[id] = nil
+        }
+        // Keep these models alive even when a completed close removes its
+        // controller during the awaits below.
+        let models = controllers.values.map(\.model)
+        let writes = models.map { $0.flush() }
         for write in writes { await write.value }
+        return saved && creations.isEmpty && models.allSatisfy { !$0.hasUnsavedChanges }
     }
 
-    public func flushAll(within ceiling: Duration) async {
+    /// A timed-out write continues with its models alive. The caller receives
+    /// false so it can cancel quitting and keep the edits available.
+    @discardableResult
+    public func flushAll(within ceiling: Duration) async -> Bool {
         let gate = ResumeOnce()
-        await withCheckedContinuation { continuation in
+        return await withCheckedContinuation { continuation in
             gate.continuation = continuation
-            Task { await flushAll(); gate.resume() }
-            Task { try? await Task.sleep(for: ceiling); gate.resume() }
+            Task { gate.resume(await flushAll()) }
+            Task { try? await Task.sleep(for: ceiling); gate.resume(false) }
         }
     }
 
@@ -306,6 +329,6 @@ public final class StickyBoard {
 
 @MainActor
 private final class ResumeOnce {
-    var continuation: CheckedContinuation<Void, Never>?
-    func resume() { continuation?.resume(); continuation = nil }
+    var continuation: CheckedContinuation<Bool, Never>?
+    func resume(_ result: Bool) { continuation?.resume(returning: result); continuation = nil }
 }

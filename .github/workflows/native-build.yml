@@ -27,7 +27,10 @@ jobs:
           xcodegen generate
           git diff --exit-code -- Scraps.xcodeproj App/Scraps/Info.plist App/ScrapsMobile/Info.plist
       - name: Package rules
-        run: swift test --package-path Packages/StickyKit
+        run: |
+          python3 Scripts/verify-localizations.py
+          bash -n Scripts/dev-install.sh Scripts/archive.sh
+          swift test --package-path Packages/StickyKit
       - name: macOS build
         run: |
           xcodebuild -project Scraps.xcodeproj -scheme Scraps -configuration Debug \
@@ -46,6 +49,7 @@ jobs:
           xcodebuild -project Scraps.xcodeproj -scheme ScrapsMobile -configuration Debug \
             -destination 'generic/platform=iOS Simulator' -derivedDataPath build.noindex/DerivedData \
             build CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=''
+          python3 Scripts/verify-product.py build.noindex/DerivedData/Build/Products/Debug-iphonesimulator/Scraps.app
       - name: Release archives
         run: |
           xcodebuild -project Scraps.xcodeproj -scheme Scraps -configuration Release \
@@ -60,7 +64,8 @@ jobs:
           codesign --force --sign - --options runtime --entitlements App/Scraps/Scraps.entitlements "$PRODUCT"
           codesign --verify --deep --strict "$PRODUCT"
           codesign -d --entitlements - "$PRODUCT"
-          python3 Scripts/verify-product.py "$PRODUCT"
+          python3 Scripts/verify-product.py "$PRODUCT" --release
+          python3 Scripts/verify-product.py build.noindex/Archives/ScrapsMobile.xcarchive/Products/Applications/Scraps.app --release
           ditto -c -k --sequesterRsrc --keepParent "$PRODUCT" build.noindex/Scraps-macOS-release.zip
       - uses: actions/upload-artifact@v4
         with:

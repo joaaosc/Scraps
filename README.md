@@ -52,9 +52,29 @@ Scripts/archive.sh iOS
 A instalação registra a cópia em `/Applications` usada pelo Spotlight. O
 arquivamento exige certificados Apple Distribution e perfis da equipe.
 
+Para atualizar uma cópia local depois de uma nova versão na `main`:
+
+```sh
+git fetch origin
+git switch main
+git pull --ff-only origin main
+xcodegen generate
+Scripts/dev-install.sh
+```
+
+O instalador aguarda o encerramento, verifica a nova cópia e preserva a anterior
+na Lixeira. Um `git pull` sozinho atualiza o código, sem substituir o app instalado.
+
+Para testar iPhone/iPad, abrir `Scraps.xcodeproj`, escolher o scheme
+**ScrapsMobile** e executar com ⌘R num simulador com iOS 27. Em um aparelho real,
+configurar a equipe e a assinatura automática no Xcode. O roteiro inclui a
+etapa de TestFlight e as conferências manuais de idiomas e acessibilidade.
+
 Consulte [preparação para a loja](Documentation/AppStore.md),
 [conferência manual](Documentation/Validation.md),
 [privacidade](Documentation/Privacy.md) e [licença](LICENSE).
+As correções de integridade e internacionalização estão registradas na
+[auditoria da versão](Documentation/Audit.md).
 
 ## Estrutura
 

@@ -9,6 +9,14 @@ public enum MobileStickySaveState: Equatable, Sendable {
     case failed
 }
 
+public enum MobileStickyPresentation: String, Identifiable, Sendable {
+    case recentlyDeleted
+    case settings
+    case colorPicker
+
+    public var id: Self { self }
+}
+
 public struct MobileStickyNotice: Identifiable, Equatable, Sendable {
     public let id = UUID()
     public let message: String
@@ -31,8 +39,7 @@ public final class MobileStickyLibrary {
     public private(set) var deletingIdentifiers: Set<UUID> = []
     public var notice: MobileStickyNotice?
     public var navigation: [UUID] = []
-    public var settingsRequested = false
-    public var colorPickerRequested = false
+    public var presentation: MobileStickyPresentation?
 
     @ObservationIgnored private let store: SessionStickyStore?
     @ObservationIgnored private var pendingSaves: [UUID: Task<Void, Never>] = [:]
@@ -59,6 +66,17 @@ public final class MobileStickyLibrary {
 
     public func isSessionOnly(id: UUID) -> Bool {
         sessionIdentifiers.contains(id)
+    }
+
+    public func openSticky(id: UUID) {
+        guard sticky(id: id) != nil else { return }
+        presentation = nil
+        navigation = [id]
+    }
+
+    public func showAll() {
+        presentation = nil
+        navigation = []
     }
 
     public func reload() async {
@@ -135,7 +153,7 @@ public final class MobileStickyLibrary {
     public func setColor(_ color: StickyColor, id: UUID) {
         guard !deletingIdentifiers.contains(id), let index = stickies.firstIndex(where: { $0.id == id }), stickies[index].color != color else { return }
         stickies[index].color = color
-        stickies[index].updatedAt = Date()
+        stickies[index].updatedAt = max(Date(), stickies[index].updatedAt, stickies[index].createdAt)
         mutationVersion &+= 1
         scheduleSave(id: id)
         sortStickies()
@@ -187,11 +205,11 @@ public final class MobileStickyLibrary {
     }
 
     public func restore(id: UUID) async {
-        guard let store else { return }
+        guard let store, sticky(id: id) == nil else { return }
         let previous = writeQueue
         let operation = Task { @MainActor [weak self] in
             await previous?.value
-            guard let self else { return }
+            guard let self, self.sticky(id: id) == nil else { return }
             do {
                 if let sticky = try await store.restore(id: id) {
                     self.mutationVersion &+= 1
@@ -211,11 +229,12 @@ public final class MobileStickyLibrary {
     }
 
     public func permanentlyDelete(id: UUID) async {
-        guard let store else { return }
+        guard let store, sticky(id: id) == nil, recentlyDeleted.contains(where: { $0.id == id }) else { return }
         let previous = writeQueue
         let operation = Task { @MainActor [weak self] in
             await previous?.value
-            guard let self else { return }
+            guard let self, self.sticky(id: id) == nil,
+                  self.recentlyDeleted.contains(where: { $0.id == id }) else { return }
             do {
                 try await store.delete(id: id)
                 self.recentlyDeleted.removeAll { $0.id == id }

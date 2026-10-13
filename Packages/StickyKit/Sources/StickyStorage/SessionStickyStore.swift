@@ -29,6 +29,7 @@ public actor SessionStickyStore: RecentlyDeletedStickyStore {
     /// Retain routing even after permanent deletion, so a delayed session
     /// autosave can never escape to disk.
     private var sessionIdentifiers: Set<UUID> = []
+    private var mutations: [UUID: (token: UUID, task: Task<Void, Never>)] = [:]
 
     public init(durable: any StickyStore, session: MemoryStickyStore = MemoryStickyStore()) {
         self.durable = durable
@@ -36,6 +37,10 @@ public actor SessionStickyStore: RecentlyDeletedStickyStore {
     }
 
     public func createSession(_ sticky: Sticky) async throws {
+        try await serialize(id: sticky.id) { try await self.createSessionNow(sticky) }
+    }
+
+    private func createSessionNow(_ sticky: Sticky) async throws {
         guard !(try await durable.existingIdentifiers()).contains(sticky.id) else {
             throw SessionStickyStoreError.identifierAlreadyExists(sticky.id)
         }
@@ -66,6 +71,10 @@ public actor SessionStickyStore: RecentlyDeletedStickyStore {
     }
 
     public func save(_ sticky: Sticky) async throws {
+        try await serialize(id: sticky.id) { try await self.saveNow(sticky) }
+    }
+
+    private func saveNow(_ sticky: Sticky) async throws {
         if await belongsToSession(id: sticky.id) {
             try await session.save(sticky)
         } else {
@@ -74,6 +83,10 @@ public actor SessionStickyStore: RecentlyDeletedStickyStore {
     }
 
     public func delete(id: UUID) async throws {
+        try await serialize(id: id) { try await self.deleteNow(id: id) }
+    }
+
+    private func deleteNow(id: UUID) async throws {
         if await belongsToSession(id: id) {
             await session.delete(id: id)
         } else {
@@ -90,6 +103,10 @@ public actor SessionStickyStore: RecentlyDeletedStickyStore {
     }
 
     public func moveToTrash(_ sticky: Sticky, at date: Date) async throws {
+        try await serialize(id: sticky.id) { try await self.moveToTrashNow(sticky, at: date) }
+    }
+
+    private func moveToTrashNow(_ sticky: Sticky, at date: Date) async throws {
         if await belongsToSession(id: sticky.id) {
             await session.moveToTrash(sticky, at: date)
         } else {
@@ -102,6 +119,10 @@ public actor SessionStickyStore: RecentlyDeletedStickyStore {
 
     @discardableResult
     public func restore(id: UUID) async throws -> Sticky? {
+        try await serialize(id: id) { try await self.restoreNow(id: id) }
+    }
+
+    private func restoreNow(id: UUID) async throws -> Sticky? {
         if await belongsToSession(id: id) {
             return try await session.restore(id: id)
         }
@@ -118,6 +139,10 @@ public actor SessionStickyStore: RecentlyDeletedStickyStore {
 
     /// The durable save must succeed before the RAM copy is released.
     public func makeDurable(id: UUID) async throws {
+        try await serialize(id: id) { try await self.makeDurableNow(id: id) }
+    }
+
+    private func makeDurableNow(id: UUID) async throws {
         guard let sticky = await session.stickyIncludingDeleted(id: id) else { return }
         guard sticky.deletedAt == nil else { throw FileStickyStoreError.recentlyDeleted(id) }
         try await durable.save(sticky)
@@ -128,6 +153,10 @@ public actor SessionStickyStore: RecentlyDeletedStickyStore {
     /// Keep the original file when conversion fails. Session creation never
     /// calls this method implicitly, so ordinary session notes touch no disk.
     public func makeSessionOnly(id: UUID) async throws {
+        try await serialize(id: id) { try await self.makeSessionOnlyNow(id: id) }
+    }
+
+    private func makeSessionOnlyNow(id: UUID) async throws {
         guard !(await belongsToSession(id: id)),
               let sticky = try await durable.stickies().first(where: { $0.id == id }) else { return }
         try await session.save(sticky)
@@ -146,5 +175,24 @@ public actor SessionStickyStore: RecentlyDeletedStickyStore {
         guard await session.contains(id: id) else { return false }
         sessionIdentifiers.insert(id)
         return true
+    }
+
+    /// Actor methods can interleave while another store is writing. Serialize
+    /// mutations of one note so a conversion cannot discard a concurrent edit.
+    private func serialize<Value: Sendable>(
+        id: UUID, _ operation: @escaping @Sendable () async throws -> Value
+    ) async throws -> Value {
+        let previous = mutations[id]?.task
+        let write = Task {
+            await previous?.value
+            return try await operation()
+        }
+        let token = UUID()
+        let barrier = Task { _ = try? await write.value }
+        mutations[id] = (token, barrier)
+        defer {
+            if mutations[id]?.token == token { mutations[id] = nil }
+        }
+        return try await write.value
     }
 }

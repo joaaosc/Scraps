@@ -24,11 +24,34 @@ public struct StickyRichText: Codable, Equatable, Sendable {
                   run.length <= units.count - run.location,
                   run.bold || run.italic else { return false }
             return isBoundary(run.location) && isBoundary(run.location + run.length)
-        }.sorted {
-            if $0.location != $1.location { return $0.location < $1.location }
-            return $0.length < $1.length
         }
-        return StickyRichText(runs: valid)
+        // Imported attributes can overlap. Combine their emphasis instead of
+        // allowing the last run to replace a previously applied style.
+        let boundaries = valid.flatMap { run in
+            [(run.location, run.bold ? 1 : 0, run.italic ? 1 : 0),
+             (run.location + run.length, run.bold ? -1 : 0, run.italic ? -1 : 0)]
+        }.sorted { $0.0 < $1.0 }
+        var result: [StickyTextRun] = []
+        var bold = 0
+        var italic = 0
+        var index = 0
+        while index < boundaries.count {
+            let location = boundaries[index].0
+            while index < boundaries.count, boundaries[index].0 == location {
+                bold += boundaries[index].1
+                italic += boundaries[index].2
+                index += 1
+            }
+            guard index < boundaries.count, bold > 0 || italic > 0 else { continue }
+            let length = boundaries[index].0 - location
+            if let previous = result.last, previous.location + previous.length == location,
+               previous.bold == (bold > 0), previous.italic == (italic > 0) {
+                result[result.count - 1].length += length
+            } else {
+                result.append(StickyTextRun(location: location, length: length, bold: bold > 0, italic: italic > 0))
+            }
+        }
+        return StickyRichText(runs: result)
     }
 }
 
