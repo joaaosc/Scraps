@@ -48,6 +48,22 @@ jobs:
             build CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=''
       - name: Native launch preview
         run: Scripts/native-preview.sh
+      - name: Release archives
+        run: |
+          xcodebuild -project Scraps.xcodeproj -scheme Scraps -configuration Release \
+            -destination 'generic/platform=macOS' -derivedDataPath build.noindex/DerivedData \
+            -archivePath build.noindex/Archives/Scraps.xcarchive archive \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=''
+          xcodebuild -project Scraps.xcodeproj -scheme ScrapsMobile -configuration Release \
+            -destination 'generic/platform=iOS' -derivedDataPath build.noindex/DerivedData \
+            -archivePath build.noindex/Archives/ScrapsMobile.xcarchive archive \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=''
+          PRODUCT=build.noindex/Archives/Scraps.xcarchive/Products/Applications/Scraps.app
+          codesign --force --sign - --options runtime --entitlements App/Scraps/Scraps.entitlements "$PRODUCT"
+          codesign --verify --deep --strict "$PRODUCT"
+          codesign -d --entitlements - "$PRODUCT"
+          python3 Scripts/verify-product.py "$PRODUCT"
+          ditto -c -k --sequesterRsrc --keepParent "$PRODUCT" build.noindex/Scraps-macOS-release.zip
       - uses: actions/upload-artifact@v4
         with:
           name: Scraps-macOS-development
@@ -56,3 +72,9 @@ jobs:
         with:
           name: Scraps-native-preview
           path: build.noindex/Preview
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Scraps-release
+          path: |
+            build.noindex/Scraps-macOS-release.zip
+            build.noindex/Archives
