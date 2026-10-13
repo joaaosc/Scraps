@@ -34,6 +34,7 @@ public final class StickyModel {
         var applyAllSpaces: @MainActor (Bool) -> Void = { _ in }
         var applyColor: @MainActor (StickyColor) -> Void = { _ in }
         var updateTitle: @MainActor (String) -> Void = { _ in }
+        var saveCompared: (@Sendable (Sticky, Sticky) async throws -> Void)? = nil
     }
 
     public var text: String {
@@ -95,6 +96,7 @@ public final class StickyModel {
     public let isSessionOnly: Bool
 
     @ObservationIgnored public var sendButtonFrame: CGRect = .zero
+    @ObservationIgnored private var savedSnapshot: Sticky
     @ObservationIgnored private var base: Sticky
     @ObservationIgnored private let dependencies: Dependencies
     @ObservationIgnored private let autosaveDelay: Duration
@@ -125,6 +127,7 @@ public final class StickyModel {
         dependencies: Dependencies
     ) {
         base = sticky
+        savedSnapshot = sticky
         text = sticky.text
         richText = sticky.richText
         color = sticky.color
@@ -356,6 +359,7 @@ public final class StickyModel {
     func applyStoredSnapshot(_ sticky: Sticky) {
         guard sticky.id == id, !hasUnsavedChanges, sticky != snapshot else { return }
         isApplyingStored = true
+        savedSnapshot = sticky
         text = sticky.text
         richText = sticky.richText
         color = sticky.color
@@ -384,7 +388,10 @@ public final class StickyModel {
             defer { pendingWrites -= 1 }
             guard !isDeleted else { return }
             do {
-                try await save(sticky)
+                if let saveCompared = dependencies.saveCompared {
+                    try await saveCompared(sticky, savedSnapshot)
+                } else { try await save(sticky) }
+                savedSnapshot = sticky
                 saveDidSucceed()
             } catch {
                 saveDidFail(error)

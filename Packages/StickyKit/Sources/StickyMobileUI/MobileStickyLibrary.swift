@@ -44,6 +44,7 @@ public final class MobileStickyLibrary {
     @ObservationIgnored private let store: SessionStickyStore?
     @ObservationIgnored private var pendingSaves: [UUID: Task<Void, Never>] = [:]
     @ObservationIgnored private var writeQueue: Task<Void, Never>?
+    @ObservationIgnored private var savedSnapshots: [UUID: Sticky] = [:]
     @ObservationIgnored private var revisions: [UUID: UInt64] = [:]
     @ObservationIgnored private var isReloading = false
     @ObservationIgnored private var mutationVersion: UInt64 = 0
@@ -100,6 +101,7 @@ public final class MobileStickyLibrary {
             guard expectedVersion == mutationVersion else { return }
             let drafts = stickies.filter { saveStates[$0.id] != nil && saveStates[$0.id] != .saved }
             let draftIDs = Set(drafts.map(\.id))
+            for note in loaded where !draftIDs.contains(note.id) { savedSnapshots[note.id] = note }
             stickies = loaded.filter { !draftIDs.contains($0.id) } + drafts
             recentlyDeleted = deleted.sorted { ($0.deletedAt ?? .distantPast) > ($1.deletedAt ?? .distantPast) }
             sessionIdentifiers = sessions
@@ -128,6 +130,7 @@ public final class MobileStickyLibrary {
                 self.stickies.append(sticky)
                 self.mutationVersion &+= 1
                 self.saveStates[sticky.id] = .saved
+                self.savedSnapshots[sticky.id] = sticky
                 if sessionOnly { self.sessionIdentifiers.insert(sticky.id) }
                 self.sortStickies()
             } catch {
@@ -182,6 +185,7 @@ public final class MobileStickyLibrary {
                 self.stickies.append(copy)
                 self.mutationVersion &+= 1
                 self.saveStates[copy.id] = .saved
+                self.savedSnapshots[copy.id] = copy
                 if session { self.sessionIdentifiers.insert(copy.id) }
                 self.sortStickies()
             } catch { self.report(error) }
@@ -310,7 +314,8 @@ public final class MobileStickyLibrary {
             await previous?.value
             guard let self, self.sticky(id: id) != nil, !self.deletingIdentifiers.contains(id) else { return }
             do {
-                try await store.save(snapshot)
+                try await store.save(snapshot, replacing: self.savedSnapshots[id])
+                self.savedSnapshots[id] = snapshot
                 if self.revisions[id, default: 0] == revision, self.sticky(id: id) != nil {
                     self.mutationVersion &+= 1
                     self.saveStates[id] = .saved
@@ -333,6 +338,7 @@ public final class MobileStickyLibrary {
                         self.stickies.append(copy)
                         self.saveStates[id] = nil
                         self.saveStates[copy.id] = .saved
+                        self.savedSnapshots[copy.id] = copy
                         self.navigation = self.navigation.map { $0 == id ? copy.id : $0 }
                         self.mutationVersion &+= 1
                         self.sortStickies()

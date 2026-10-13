@@ -74,6 +74,16 @@ public actor SessionStickyStore: RecentlyDeletedStickyStore {
         try await serialize(id: sticky.id) { try await self.saveNow(sticky) }
     }
 
+    public func save(_ sticky: Sticky, replacing expected: Sticky?) async throws {
+        try await serialize(id: sticky.id) {
+            if await self.belongsToSession(id: sticky.id) {
+                try await self.session.save(sticky)
+            } else if let files = self.durable as? FileStickyStore, let expected {
+                try await files.applySynchronized(sticky, replacing: expected)
+            } else { try await self.durable.save(sticky) }
+        }
+    }
+
     private func saveNow(_ sticky: Sticky) async throws {
         if await belongsToSession(id: sticky.id) {
             try await session.save(sticky)

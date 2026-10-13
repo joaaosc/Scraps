@@ -45,7 +45,7 @@ struct MobileStickyLibraryTests {
         library.openSticky(id: original.id)
         library.edit(id: original.id, text: "My local edit", richText: nil)
         var external = original
-        external.edit(text: "Widget edit", at: Date().addingTimeInterval(60))
+        external.edit(text: "Widget edit", at: original.updatedAt)
         try await files.save(external)
         await library.flush()
         let saved = try await files.stickies()

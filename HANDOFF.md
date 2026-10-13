@@ -96,3 +96,7 @@ Preparada a versão 1.0.0 (5) para distinguir a ampliação nas instalações lo
 ### Build contínuo na main
 
 O workflow acompanha somente main e não recompila produtos quando um commit altera apenas documentação. Os scripts locais instalam Metal Toolchain quando o componente estiver ausente. A versão 1.0.0 (5) segue para a conferência nativa final.
+
+### Proteção do editor contra alterações de widgets
+
+O editor conserva a última versão efetivamente salva e exige que ela ainda corresponda ao arquivo antes de substituir o documento. A comparação protege também quando a data do rascunho é posterior à alteração externa. No iOS, o rascunho vira uma cópia recuperada; no Mac, permanece aberto com a ação Guardar edição como cópia. Acrescentada regressão dessa condição sem iniciar janelas.

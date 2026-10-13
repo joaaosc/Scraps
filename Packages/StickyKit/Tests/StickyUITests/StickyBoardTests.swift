@@ -339,6 +339,28 @@ struct StickyModelTests {
         #expect(!model.hasUnsavedChanges)
     }
 
+    @Test("A newer local timestamp cannot overwrite a widget change to the last saved version")
+    func compareSavedVersion() async throws {
+        let directory = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let files = try FileStickyStore(directoryURL: directory)
+        let note = Sticky(text: "Original")
+        try await files.save(note)
+        let model = StickyModel(sticky: note, autosaveDelay: .seconds(60), dependencies: .init(
+            save: { try await files.save($0) }, delete: { try await files.delete(id: $0) },
+            share: { _, _, _ in }, closeWindow: {}, applyLevel: { _ in }, copyToPasteboard: { _ in },
+            saveCompared: { value, previous in try await files.applySynchronized(value, replacing: previous) }
+        ))
+        var external = note
+        external.edit(text: "Widget edit", at: note.updatedAt)
+        try await files.save(external)
+        model.text = "My later draft"
+        await model.flush().value
+        #expect(try await files.stickies().first?.text == "Widget edit")
+        #expect(model.text == "My later draft" && model.hasUnsavedChanges)
+        if case .failure = model.status {} else { Issue.record("The concurrent edit should remain recoverable") }
+    }
+
     /// Records what the model asked of the outside world.
     @MainActor
     final class Spy {

@@ -75,7 +75,12 @@ final class StickyWindowController: NSObject, NSWindowDelegate {
                 applyCollapsed: { box.controller?.applyCollapsed($0) },
                 applyAllSpaces: { box.controller?.applyAllSpaces($0) },
                 applyColor: { box.controller?.applyColor($0) },
-                updateTitle: { box.controller?.updateTitle($0) }
+                updateTitle: { box.controller?.updateTitle($0) },
+                saveCompared: { note, previous in
+                    if let files = store as? FileStickyStore {
+                        try await files.applySynchronized(note, replacing: previous)
+                    } else { try await store.save(note) }
+                }
             )
         )
         super.init()
